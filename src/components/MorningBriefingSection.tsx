@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   ArrowRight,
   Calendar,
-  CalendarClock,
   Check,
   CheckCircle2,
   Mail,
@@ -43,7 +42,6 @@ interface MorningBriefingSectionProps {
   planAcceptedToday: boolean;
   onAcceptPlan: () => void;
   onRefreshPlan: () => void;
-  onOpenReplan: () => void;
   onOpenPreferences: () => void;
   onApprovePostpone: (taskId: string, newDeadline: string) => void;
   onApproveDeprioritise: (taskId: string, newPriority: TaskPriority) => void;
@@ -66,7 +64,6 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
   planAcceptedToday,
   onAcceptPlan,
   onRefreshPlan,
-  onOpenReplan,
   onOpenPreferences,
   onApprovePostpone,
   onApproveDeprioritise,
@@ -87,15 +84,15 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
         : 0;
 
   const isOverCapacity = workload.remainingMinutesToday > openMinutesAfterCalendar;
-  const leadTask = plan.topThree[0] ? taskMap.get(plan.topThree[0].taskId) : undefined;
+  const openTasksCount = tasks.filter((t) => !t.completed).length;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#D4C8F2] bg-white">
+    <section className="overflow-hidden rounded-2xl border border-[#D4C8F2] bg-white shadow-2xs">
       {/* Tinted Morning Briefing Header */}
-      <div className="border-b border-[#E4DCF7] bg-[#F5F1FF] px-4 py-3.5 sm:px-5">
+      <div className="border-b border-[#E4DCF7] bg-gradient-to-r from-[#F5F1FF] via-[#F1EBFF] to-[#FAF8FF] px-4 py-3.5 sm:px-5">
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3 min-w-0">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#FED7AA] bg-[#FFF7ED] text-[#EA580C]">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#FED7AA] bg-gradient-to-br from-[#FFF7ED] to-[#FFEDD5] text-[#EA580C]">
               <Sun className="h-4.5 w-4.5" />
             </span>
             <div className="min-w-0">
@@ -167,23 +164,23 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
           </div>
         </div>
 
-        {/* Most Important Action Highlight (or Conflicts / Schedule Adjustments) */}
+        {/* Schedule Conflict or Assistant Capacity Guidance */}
         {plan.conflicts.length > 0 ? (
           <div className="rounded-xl border border-[#FED7AA] bg-[#FFF7ED] px-3.5 py-2.5 text-xs space-y-1">
             <div className="flex items-center gap-1.5 font-semibold text-[#C2410C]">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              <span>Attention needed</span>
+              <span>Tight schedule alert</span>
             </div>
             <p className="text-[#9A3412]">{plan.conflicts[0]}</p>
           </div>
-        ) : leadTask && !leadTask.completed ? (
+        ) : !isOverCapacity && openTasksCount > 0 ? (
           <div className="flex items-start gap-2.5 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-3.5 py-2.5 text-xs">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" />
             <p className="text-[#166534]">
               <span className="font-semibold">
-                {firstName ? `Recommended first step, ${firstName}: ` : 'Recommended first step: '}
+                {firstName ? `On track, ${firstName}: ` : 'On track: '}
               </span>
-              Start with <span className="font-semibold">{leadTask.title}</span> to clear your highest-impact item early.
+              {formatDuration(Math.max(0, openMinutesAfterCalendar - workload.remainingMinutesToday))} of buffer remains in your daily budget — knock out your top focus item below while energy is high.
             </p>
           </div>
         ) : null}
@@ -271,29 +268,18 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
 
         {/* Footer Actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-0.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={onAcceptPlan}
-              className={`flex min-h-[40px] items-center gap-1.5 rounded-xl px-4 text-xs font-semibold transition-colors ${
-                planAcceptedToday
-                  ? 'border border-[#BBF7D0] bg-[#F0FDF4] text-[#15803D]'
-                  : 'bg-[#6D4AFF] text-white hover:bg-[#5B38EE]'
-              }`}
-            >
-              <Check className="h-3.5 w-3.5" />
-              <span>{planAcceptedToday ? 'Plan accepted' : 'Accept plan'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onOpenReplan}
-              className="flex min-h-[40px] items-center gap-1.5 rounded-xl border border-[#DDD6FE] bg-[#F3EFFF] px-3.5 text-xs font-semibold text-[#4C2F96] hover:bg-[#EDE9FE] transition-colors"
-            >
-              <CalendarClock className="h-3.5 w-3.5" />
-              <span>Replan My Day</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onAcceptPlan}
+            className={`flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-xl px-4 text-xs font-semibold transition-colors ${
+              planAcceptedToday
+                ? 'border border-[#BBF7D0] bg-[#F0FDF4] text-[#15803D]'
+                : 'bg-[#6D4AFF] text-white hover:bg-[#5B38EE]'
+            }`}
+          >
+            <Check className="h-3.5 w-3.5" />
+            <span>{planAcceptedToday ? 'Plan accepted' : 'Accept plan'}</span>
+          </button>
 
           <button
             type="button"

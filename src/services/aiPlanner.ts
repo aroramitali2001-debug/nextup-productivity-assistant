@@ -136,17 +136,20 @@ export function buildRuleBasedDailyPlan(
     }
   }
 
-  const todayTasksCount = activeTasks.filter((t) => t.deadline === todayKey).length;
-  const overdueCount = activeTasks.filter((t) => isTaskOverdue(t, now)).length;
   const followUpsToday = applications.filter(
     (a) => a.followUpDate === todayKey && a.status !== 'Rejected' && a.status !== 'Offer'
   ).length;
+  const leadTaskTitle = topThree[0]
+    ? activeTasks.find((t) => t.id === topThree[0].taskId)?.title
+    : undefined;
 
   const namePrefix = userName ? `${userName}, ` : '';
   const headlineSummary =
     activeTasks.length === 0
-      ? `${namePrefix}you have no pending tasks right now. Great moment to review upcoming applications or take a breather.`
-      : `${namePrefix}you have ${todayTasksCount} task(s) due today${overdueCount > 0 ? `, ${overdueCount} overdue` : ''}${followUpsToday > 0 ? `, and ${followUpsToday} application follow-up(s)` : ''}${calendarContext?.connected ? ` alongside ${formatDuration(calendarBusyMins)} on Google Calendar` : ''}. Focus on your top ${Math.min(3, topThree.length)} items first${unrealisticTodayIds.length > 0 ? ' and shift overflow tasks to tomorrow' : ''}.`;
+      ? `${namePrefix}your task queue is clear — a great window to review applications or plan ahead.`
+      : unrealisticTodayIds.length > 0
+        ? `${namePrefix}your plate is heavier than your ${availableHoursToday}h window${calendarContext?.connected && calendarBusyMins > 0 ? ` (with ${formatDuration(calendarBusyMins)} on Calendar)` : ''}. Protect "${leadTaskTitle || 'your top priority'}" first and consider shifting overflow items.`
+        : `${namePrefix}start with "${leadTaskTitle || 'your top priority'}"${followUpsToday > 0 ? ` and keep time for ${followUpsToday} follow-up${followUpsToday === 1 ? '' : 's'} due today` : ''}${calendarContext?.connected && calendarBusyMins > 0 ? ` around ${formatDuration(calendarBusyMins)} of Calendar events` : ''}. Your workload fits comfortably in your open hours.`;
 
   return {
     source: 'rule-based',

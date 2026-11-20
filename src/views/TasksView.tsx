@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import {
+  AlertCircle,
   ArrowUpDown,
+  CalendarDays,
   CheckCircle2,
   Clock,
+  ListTodo,
   Plus,
   Search,
   Sparkles,
@@ -19,6 +22,7 @@ import {
 } from '../utils/dateUtils';
 import { parseNaturalLanguageTask, parseTaskWithAI } from '../utils/nlTaskParser';
 import { CATEGORY_COLOR, PRIORITY_COLOR } from '../utils/semanticColors';
+import { CategoryIcon } from '../utils/taskIcons';
 
 type TaskSortOption = 'deadline' | 'priority' | 'duration' | 'category';
 
@@ -41,11 +45,16 @@ interface TasksViewProps {
   onClearSampleTasks: () => void;
 }
 
-const VIEW_TABS: { key: TaskViewFilter; label: string }[] = [
-  { key: 'today', label: 'Today' },
-  { key: 'upcoming', label: 'Upcoming' },
-  { key: 'overdue', label: 'Overdue' },
-  { key: 'completed', label: 'Completed' },
+const VIEW_TABS: {
+  key: TaskViewFilter;
+  label: string;
+  icon: typeof ListTodo;
+  iconColor: string;
+}[] = [
+  { key: 'today', label: 'Today', icon: ListTodo, iconColor: 'text-[#6D4AFF]' },
+  { key: 'upcoming', label: 'Upcoming', icon: CalendarDays, iconColor: 'text-[#2563EB]' },
+  { key: 'overdue', label: 'Overdue', icon: AlertCircle, iconColor: 'text-[#DC2626]' },
+  { key: 'completed', label: 'Completed', icon: CheckCircle2, iconColor: 'text-[#16A34A]' },
 ];
 
 const CATEGORIES: ('All' | TaskCategory)[] = ['All', 'College', 'Career', 'Personal', 'Other'];
@@ -216,7 +225,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       </div>
 
       {/* Centralized Quick Capture */}
-      <section className="rounded-2xl border border-[#DDD6FE] bg-[#FAF8FF] p-3.5 sm:p-4">
+      <section className="rounded-2xl border border-[#DDD6FE] bg-gradient-to-r from-[#FAF8FF] to-[#F3EFFF]/65 p-3.5 sm:p-4 shadow-2xs">
         <form onSubmit={handleQuickSubmit}>
           <div className="flex items-center gap-2">
             <input
@@ -244,8 +253,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 <span className="font-semibold text-[#6D4AFF]">Detected:</span>
                 <span className="font-medium">{livePreview.title}</span>
                 <span aria-hidden="true" className="text-[#C9BFE3]">·</span>
-                <span className={`font-medium ${CATEGORY_COLOR[livePreview.category].text}`}>
-                  {livePreview.category}
+                <span className={`inline-flex items-center gap-1 font-medium ${CATEGORY_COLOR[livePreview.category].text}`}>
+                  <CategoryIcon category={livePreview.category} className="h-3.5 w-3.5 shrink-0" />
+                  <span>{livePreview.category}</span>
                 </span>
                 <span aria-hidden="true" className="text-[#C9BFE3]">·</span>
                 <span className="inline-flex items-center gap-1 text-[#5B5570]">
@@ -282,13 +292,17 @@ export const TasksView: React.FC<TasksViewProps> = ({
                       key={cat}
                       type="button"
                       onClick={() => setOverrideCategory(overrideCategory === cat ? null : cat)}
-                      className={`min-h-[34px] rounded-lg px-2.5 text-xs font-medium transition-colors ${
+                      className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors ${
                         active
                           ? `${CATEGORY_COLOR[cat].softBg} ${CATEGORY_COLOR[cat].text} border ${CATEGORY_COLOR[cat].border}`
                           : 'bg-white border border-[#E5DFF2] text-[#5B5570] hover:text-[#1E1B2E]'
                       }`}
                     >
-                      {cat}
+                      <CategoryIcon
+                        category={cat}
+                        className={`h-3.5 w-3.5 shrink-0 ${CATEGORY_COLOR[cat].text}`}
+                      />
+                      <span>{cat}</span>
                     </button>
                   );
                 })}
@@ -323,6 +337,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       {/* Primary View Tabs */}
       <div className="grid grid-cols-4 gap-1 rounded-2xl border border-[#D4C8F2] bg-[#E8E0F7] p-1">
         {VIEW_TABS.map((tab) => {
+          const TabIcon = tab.icon;
           const isActive = activeFilter === tab.key;
           const count = counts[tab.key];
           const activeColor =
@@ -339,15 +354,21 @@ export const TasksView: React.FC<TasksViewProps> = ({
               key={tab.key}
               type="button"
               onClick={() => onChangeFilter(tab.key)}
-              className={`min-h-[42px] rounded-xl px-2 py-2 text-xs font-medium transition-colors sm:text-sm whitespace-nowrap ${
+              className={`inline-flex min-h-[42px] cursor-pointer items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-medium transition-colors sm:text-sm whitespace-nowrap ${
                 isActive
                   ? 'bg-white text-[#1E1B2E] shadow-xs'
                   : 'text-[#5B5570] hover:text-[#1E1B2E]'
               }`}
             >
+              <TabIcon
+                className={`h-3.5 w-3.5 shrink-0 hidden sm:inline ${
+                  isActive ? tab.iconColor : 'text-[#7C7594]'
+                }`}
+                aria-hidden="true"
+              />
               <span>{tab.label}</span>
               <span
-                className={`ml-1.5 tabular-nums text-xs font-semibold ${
+                className={`tabular-nums text-xs font-semibold ${
                   isActive
                     ? activeColor
                     : tab.key === 'overdue' && count > 0
@@ -381,9 +402,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
                   }`}
                 >
                   {cat !== 'All' && (
-                    <span
-                      className={`h-2 w-2 rounded-full ${active ? 'bg-white' : CATEGORY_COLOR[cat].dot}`}
-                      aria-hidden="true"
+                    <CategoryIcon
+                      category={cat}
+                      className={`h-3.5 w-3.5 shrink-0 ${
+                        active ? 'text-white' : CATEGORY_COLOR[cat].text
+                      }`}
                     />
                   )}
                   <span>{cat}</span>

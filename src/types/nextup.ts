@@ -43,6 +43,7 @@ export type ApplicationViewFilter =
   | 'All'
   | 'Active'
   | 'FollowUps'
+  | 'InterviewOrOA'
   | 'Interview'
   | 'Assessment'
   | 'Offer'

@@ -3,6 +3,7 @@ import { Bell, Clock, Link2, Mail, X } from 'lucide-react';
 import { Task, TaskCategory, TaskPriority, TaskReminderTiming } from '../types/nextup';
 import { addDaysToDateKey, formatTime12h, toLocalDateKey } from '../utils/dateUtils';
 import { CATEGORY_COLOR } from '../utils/semanticColors';
+import { CategoryIcon } from '../utils/taskIcons';
 
 interface TaskFormModalProps {
   isOpen: boolean;
@@ -216,8 +217,8 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                         : 'text-[#5B5570] hover:text-[#1E1B2E]'
                     }`}
                   >
-                    <span className={`h-2 w-2 rounded-full ${style.dot}`} aria-hidden="true" />
-                    {cat}
+                    <CategoryIcon category={cat} className={`h-3.5 w-3.5 shrink-0 ${style.text}`} />
+                    <span>{cat}</span>
                   </button>
                 );
               })}

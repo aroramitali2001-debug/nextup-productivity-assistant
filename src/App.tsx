@@ -65,6 +65,7 @@ import { extractFirstName, isPlaceholderName, resolveUserFirstName } from './uti
 import {
   AIDailyPlan,
   ApplicationStatus,
+  ApplicationViewFilter,
   JobApplication,
   NavTab,
   ReplanResult,
@@ -99,6 +100,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
   const [taskViewFilter, setTaskViewFilter] = useState<TaskViewFilter>('today');
+  const [appViewFilter, setAppViewFilter] = useState<ApplicationViewFilter>('All');
 
   // Task & App Form Modals
   const [taskModalOpen, setTaskModalOpen] = useState(false);
@@ -841,11 +843,15 @@ export default function App() {
     setAppModalOpen(true);
   }, []);
 
-  const handleNavigateTab = useCallback((tab: NavTab, filter?: TaskViewFilter) => {
-    setActiveTab(tab);
-    if (filter) setTaskViewFilter(filter);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  const handleNavigateTab = useCallback(
+    (tab: NavTab, taskFilter?: TaskViewFilter, appFilter?: ApplicationViewFilter) => {
+      setActiveTab(tab);
+      if (taskFilter) setTaskViewFilter(taskFilter);
+      if (appFilter) setAppViewFilter(appFilter);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    []
+  );
 
   const handleResetSampleData = useCallback(() => {
     const sample = storageService.resetToSampleData();
@@ -1133,21 +1139,23 @@ export default function App() {
             Next<span className="text-[#6D4AFF]">Up</span>
           </button>
 
-          <nav aria-label="Main navigation" className="hidden md:flex items-center gap-6">
+          <nav aria-label="Main navigation" className="hidden md:flex items-center gap-5 lg:gap-6">
             {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
               const isActive = activeTab === item.key;
               return (
                 <button
                   key={item.key}
                   type="button"
                   onClick={() => handleNavigateTab(item.key)}
-                  className={`relative py-2 text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
+                  className={`relative inline-flex items-center gap-1.5 py-2 text-sm font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                     isActive
                       ? 'text-[#6D4AFF]'
                       : 'text-[#5B5570] hover:text-[#1E1B2E]'
                   }`}
                 >
-                  {item.label}
+                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#6D4AFF]' : 'text-[#7C7594]'}`} />
+                  <span>{item.label}</span>
                   {isActive && (
                     <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[#6D4AFF]" />
                   )}
@@ -1192,6 +1200,8 @@ export default function App() {
             aiDailyPlan={activeDailyPlan}
             isPlanningAI={isPlanningAI}
             onToggleTask={handleToggleTask}
+            onQuickAddTask={handleQuickAddTask}
+            onEditTask={openEditTaskModal}
             onOpenPreferences={() => setPrefsModalOpen(true)}
             onOpenReplan={handleOpenReplan}
             onOpenMiddayCheckIn={() => setMiddayModalOpen(true)}
@@ -1227,6 +1237,8 @@ export default function App() {
         {activeTab === 'applications' && (
           <ApplicationsView
             applications={applications}
+            activeFilter={appViewFilter}
+            onChangeFilter={setAppViewFilter}
             onEditApplication={openEditAppModal}
             onDeleteApplication={handleDeleteApplication}
             onUpdateStatus={handleUpdateApplicationStatus}

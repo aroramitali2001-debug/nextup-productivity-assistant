@@ -4,6 +4,7 @@ import { isSampleTask } from '../services/storage';
 import { Task } from '../types/nextup';
 import { formatDuration, formatFriendlyDateTime, isTaskOverdue, toLocalDateKey } from '../utils/dateUtils';
 import { CATEGORY_COLOR, PRIORITY_COLOR } from '../utils/semanticColors';
+import { TaskContextIcon } from '../utils/taskIcons';
 
 interface TaskRowProps {
   task: Task;
@@ -42,16 +43,16 @@ export const TaskRow: React.FC<TaskRowProps> = ({
 
   return (
     <div
-      className={`group transition-colors duration-150 ${
+      className={`group border-l-[3px] transition-colors duration-150 ${
         compact ? 'py-3 px-4 sm:px-5' : 'px-4 py-3.5 sm:px-5'
       } ${
         task.completed
-          ? 'bg-[#F0FDF4]/55 opacity-80'
+          ? 'border-l-[#16A34A]/65 bg-[#F0FDF4]/55 opacity-80'
           : overdue
-            ? 'bg-[#FEF2F2]/65 hover:bg-[#FEF2F2]/90'
+            ? 'border-l-[#DC2626] bg-[#FEF2F2]/70 hover:bg-[#FEF2F2]/95'
             : task.priority === 'Must Do'
-              ? 'bg-[#FFFBF7] hover:bg-[#FFF7ED]/70'
-              : 'bg-white hover:bg-[#FAF8FF]'
+              ? 'border-l-[#EA580C] bg-[#FFFBF7] hover:bg-[#FFF7ED]/75'
+              : 'border-l-transparent bg-white hover:bg-[#FAF8FF]'
       }`}
     >
       <div className="flex items-start gap-3">
@@ -60,7 +61,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
           type="button"
           onClick={() => onToggleComplete(task.id)}
           aria-label={task.completed ? `Mark "${task.title}" as incomplete` : `Mark "${task.title}" as complete`}
-          className="flex h-11 w-11 -ml-2 -mt-1.5 shrink-0 items-center justify-center rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6D4AFF]"
+          className="flex h-11 w-11 -ml-2 -mt-1.5 shrink-0 items-center justify-center rounded-xl cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6D4AFF]"
         >
           <span
             className={`flex h-5 w-5 items-center justify-center rounded-md border transition-colors duration-150 ${
@@ -83,7 +84,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
             <button
               type="button"
               onClick={() => (hasExpandableDetails ? setExpanded((v) => !v) : onEdit(task))}
-              className={`text-left text-[15px] leading-snug font-medium transition-colors focus-visible:outline-2 focus-visible:outline-[#6D4AFF] ${
+              className={`text-left text-[15px] leading-snug font-medium transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[#6D4AFF] ${
                 task.completed
                   ? 'text-[#5B5570] line-through'
                   : 'text-[#1E1B2E] hover:text-[#5B38EE]'
@@ -96,8 +97,12 @@ export const TaskRow: React.FC<TaskRowProps> = ({
           {/* Semantic Metadata Row */}
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] tabular-nums">
             <span className={`inline-flex items-center gap-1.5 font-medium ${catStyle.text}`}>
-              <span className={`h-2 w-2 rounded-full ${catStyle.dot}`} aria-hidden="true" />
-              {task.category}
+              <span
+                className={`inline-flex h-5 w-5 items-center justify-center rounded-md border ${catStyle.softBg} ${catStyle.border}`}
+              >
+                <TaskContextIcon task={task} className="h-3 w-3 shrink-0" />
+              </span>
+              <span>{task.category}</span>
             </span>
             <span aria-hidden="true" className="text-[#C9BFE3]">·</span>
             {task.completed ? (

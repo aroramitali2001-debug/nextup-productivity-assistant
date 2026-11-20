@@ -2,7 +2,7 @@ import React from 'react';
 import {
   AlertTriangle,
   ArrowRight,
-  CalendarClock,
+  CalendarRange,
   Check,
   Clock,
   RefreshCw,
@@ -12,6 +12,7 @@ import {
 import { AIDailyPlan, Task, TaskPriority } from '../types/nextup';
 import { formatDuration, formatFriendlyDate, formatFriendlyDateTime, toLocalDateKey } from '../utils/dateUtils';
 import { CATEGORY_COLOR } from '../utils/semanticColors';
+import { TaskContextIcon } from '../utils/taskIcons';
 
 interface AIDailyPlannerSectionProps {
   firstName: string;
@@ -74,7 +75,7 @@ export const AIDailyPlannerSection: React.FC<AIDailyPlannerSectionProps> = ({
             onClick={onReplanMyDay}
             className="flex min-h-[40px] items-center gap-1.5 rounded-xl bg-[#6D4AFF] px-3.5 text-xs font-medium text-white hover:bg-[#5B38EE] transition-colors whitespace-nowrap"
           >
-            <CalendarClock className="h-3.5 w-3.5" />
+            <CalendarRange className="h-3.5 w-3.5" />
             <span>Replan My Day</span>
           </button>
         </div>
@@ -149,7 +150,10 @@ export const AIDailyPlannerSection: React.FC<AIDailyPlannerSectionProps> = ({
                       </div>
 
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-[#5B5570] tabular-nums">
-                        <span className={`font-medium ${catStyle.text}`}>{task.category}</span>
+                        <span className={`inline-flex items-center gap-1 font-medium ${catStyle.text}`}>
+                          <TaskContextIcon task={task} className="h-3.5 w-3.5 shrink-0" />
+                          <span>{task.category}</span>
+                        </span>
                         <span aria-hidden="true">·</span>
                         <span className="inline-flex items-center gap-1">
                           <Clock className="h-3 w-3" />
