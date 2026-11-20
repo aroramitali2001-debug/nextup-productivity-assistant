@@ -9,24 +9,39 @@ import {
   FilterX,
   Mail,
   Pencil,
+  Plug,
   Search,
   Send,
   Trash2,
 } from 'lucide-react';
+import { PlatformLogo, PlatformSourceBadge } from '../components/PlatformLogo';
+import {
+  JOB_PLATFORM_ADAPTER_LIST,
+  JOB_PLATFORM_SOURCES,
+  resolveApplicationPlatform,
+} from '../services/jobPlatforms';
 import { getFollowUpsDue } from '../services/prioritiser';
 import { isSampleApplication } from '../services/storage';
-import { ApplicationStatus, ApplicationViewFilter, JobApplication } from '../types/nextup';
+import {
+  ApplicationStatus,
+  ApplicationViewFilter,
+  JobApplication,
+  JobPlatformId,
+  JobPlatformSource,
+} from '../types/nextup';
 import { formatFriendlyDate, formatFriendlyDateTime, toLocalDateKey } from '../utils/dateUtils';
 import { APPLICATION_STATUS_COLOR } from '../utils/semanticColors';
 
 interface ApplicationsViewProps {
   applications: JobApplication[];
   activeFilter: ApplicationViewFilter;
+  gmailReadConnected?: boolean;
   onChangeFilter: (filter: ApplicationViewFilter) => void;
   onEditApplication: (app: JobApplication) => void;
   onDeleteApplication: (id: string) => void;
   onUpdateStatus: (id: string, status: ApplicationStatus) => void;
   onClearSampleApplications: () => void;
+  onOpenPlatformConnect?: (platformId: JobPlatformId) => void;
 }
 
 const ALL_STATUSES: ApplicationStatus[] = [
@@ -63,14 +78,17 @@ const FILTER_DISPLAY_LABEL: Record<ApplicationViewFilter, string> = {
 export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
   applications,
   activeFilter,
+  gmailReadConnected = false,
   onChangeFilter,
   onEditApplication,
   onDeleteApplication,
   onUpdateStatus,
   onClearSampleApplications,
+  onOpenPlatformConnect,
 }) => {
   const today = toLocalDateKey();
   const [searchQuery, setSearchQuery] = useState('');
+  const [platformFilter, setPlatformFilter] = useState<'All' | JobPlatformSource>('All');
 
   const isActiveStatus = (s: ApplicationStatus) => s !== 'Rejected' && s !== 'Offer';
 
@@ -104,6 +122,21 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
     };
   }, [applications, followUpDueIds]);
 
+  const platformCounts = useMemo(() => {
+    const map = JOB_PLATFORM_SOURCES.reduce<Record<JobPlatformSource, number>>(
+      (acc, p) => {
+        acc[p.source] = 0;
+        return acc;
+      },
+      {} as Record<JobPlatformSource, number>
+    );
+    for (const app of applications) {
+      const src = resolveApplicationPlatform(app);
+      map[src] = (map[src] || 0) + 1;
+    }
+    return map;
+  }, [applications]);
+
   const filteredApps = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return applications
@@ -118,10 +151,16 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
         return a.status === activeFilter;
       })
       .filter((a) => {
+        if (platformFilter === 'All') return true;
+        return resolveApplicationPlatform(a) === platformFilter;
+      })
+      .filter((a) => {
         if (!q) return true;
+        const src = resolveApplicationPlatform(a);
         return (
           a.company.toLowerCase().includes(q) ||
           a.role.toLowerCase().includes(q) ||
+          src.toLowerCase().includes(q) ||
           (a.recruiterContact && a.recruiterContact.toLowerCase().includes(q)) ||
           (a.nextAction && a.nextAction.toLowerCase().includes(q)) ||
           (a.notes && a.notes.toLowerCase().includes(q))
@@ -133,7 +172,7 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
         if (aDue !== bDue) return aDue - bDue;
         return b.updatedAt.localeCompare(a.updatedAt);
       });
-  }, [applications, activeFilter, searchQuery, followUpDueIds]);
+  }, [applications, activeFilter, platformFilter, searchQuery, followUpDueIds]);
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -149,69 +188,81 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
         </div>
       </div>
 
-      {/* Interactive Pipeline Overview Strip */}
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      {/* Centralized 6-KPI Pipeline Overview Strip */}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
         <button
           type="button"
-          onClick={() => onChangeFilter(activeFilter === 'Active' ? 'All' : 'Active')}
-          className={`cursor-pointer rounded-2xl border bg-gradient-to-br from-white to-[#F7F4FF] px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#6D4AFF] hover:shadow-xs ${
-            activeFilter === 'Active' ? 'border-[#6D4AFF] ring-2 ring-[#6D4AFF]/20' : 'border-[#DFD7F2]'
+          onClick={() => onChangeFilter('All')}
+          className={`cursor-pointer rounded-2xl border bg-white px-3.5 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#6D4AFF] hover:shadow-xs ${
+            activeFilter === 'All' ? 'border-[#6D4AFF] ring-2 ring-[#6D4AFF]/20' : 'border-[#E5DFF2]'
           }`}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-[#4C2F96]">💼 Active pipeline</span>
-            <Briefcase className="h-5 w-5 text-[#6D4AFF]" aria-hidden="true" />
-          </div>
-          <p className="mt-1 text-2xl font-extrabold text-[#1E1B2E] tabular-nums">{counts.Active}</p>
+          <span className="text-[11px] font-bold text-[#5B5570]">📊 Total Tracked</span>
+          <p className="mt-1 text-2xl font-extrabold text-[#1E1B2E] tabular-nums">{counts.All}</p>
         </button>
 
         <button
           type="button"
-          onClick={() =>
-            onChangeFilter(activeFilter === 'InterviewOrOA' ? 'All' : 'InterviewOrOA')
-          }
-          className={`cursor-pointer rounded-2xl border bg-gradient-to-br from-[#FFF7ED] to-[#FFEDD5]/65 px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#EA580C] hover:shadow-xs ${
-            activeFilter === 'InterviewOrOA'
+          onClick={() => onChangeFilter(activeFilter === 'Active' ? 'All' : 'Active')}
+          className={`cursor-pointer rounded-2xl border bg-gradient-to-br from-white to-[#F7F4FF] px-3.5 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#6D4AFF] hover:shadow-xs ${
+            activeFilter === 'Active' ? 'border-[#6D4AFF] ring-2 ring-[#6D4AFF]/20' : 'border-[#DFD7F2]'
+          }`}
+        >
+          <span className="text-[11px] font-bold text-[#4C2F96]">💼 Active Pipeline</span>
+          <p className="mt-1 text-2xl font-extrabold text-[#5B38EE] tabular-nums">{counts.Active}</p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onChangeFilter(activeFilter === 'Interview' ? 'All' : 'Interview')}
+          className={`cursor-pointer rounded-2xl border bg-gradient-to-br from-[#F5F1FF] to-[#EDE9FE]/70 px-3.5 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#6D4AFF] hover:shadow-xs ${
+            activeFilter === 'Interview'
+              ? 'border-[#6D4AFF] ring-2 ring-[#6D4AFF]/20'
+              : 'border-[#DDD6FE]'
+          }`}
+        >
+          <span className="text-[11px] font-bold text-[#4C2F96]">🎤 Interviews</span>
+          <p className="mt-1 text-2xl font-extrabold text-[#5B38EE] tabular-nums">
+            {counts.Interview}
+          </p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onChangeFilter(activeFilter === 'Assessment' ? 'All' : 'Assessment')}
+          className={`cursor-pointer rounded-2xl border bg-gradient-to-br from-[#FFF7ED] to-[#FFEDD5]/65 px-3.5 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#EA580C] hover:shadow-xs ${
+            activeFilter === 'Assessment'
               ? 'border-[#EA580C] ring-2 ring-[#EA580C]/20'
               : 'border-[#FED7AA]'
           }`}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-[#9A3412]">🎤 Interviews &amp; OAs</span>
-            <ClipboardCheck className="h-5 w-5 text-[#EA580C]" aria-hidden="true" />
-          </div>
+          <span className="text-[11px] font-bold text-[#9A3412]">🧪 Assessments</span>
           <p className="mt-1 text-2xl font-extrabold text-[#C2410C] tabular-nums">
-            {counts.InterviewOrOA}
+            {counts.Assessment}
           </p>
         </button>
 
         <button
           type="button"
           onClick={() => onChangeFilter(activeFilter === 'FollowUps' ? 'All' : 'FollowUps')}
-          className={`cursor-pointer rounded-2xl border px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-xs ${
+          className={`cursor-pointer rounded-2xl border px-3.5 py-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-xs ${
             activeFilter === 'FollowUps'
-              ? 'border-[#6D4AFF] bg-[#F3EFFF] ring-2 ring-[#6D4AFF]/20'
+              ? 'border-[#2563EB] bg-[#EFF6FF] ring-2 ring-[#2563EB]/20'
               : counts.FollowUps > 0
-                ? 'border-[#DDD6FE] bg-gradient-to-br from-[#F5F2FF] to-[#EDE9FE]/70 hover:border-[#6D4AFF]'
+                ? 'border-[#BFDBFE] bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE]/60 hover:border-[#2563EB]'
                 : 'border-[#E5DFF2] bg-white hover:border-[#C4B5FD]'
           }`}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span
-              className={`text-xs font-bold ${
-                counts.FollowUps > 0 ? 'text-[#4C2F96]' : 'text-[#5B5570]'
-              }`}
-            >
-              📤 Follow-ups due
-            </span>
-            <Send
-              className={`h-5 w-5 ${counts.FollowUps > 0 ? 'text-[#6D4AFF]' : 'text-[#7C7594]'}`}
-              aria-hidden="true"
-            />
-          </div>
+          <span
+            className={`text-[11px] font-bold ${
+              counts.FollowUps > 0 ? 'text-[#1D4ED8]' : 'text-[#5B5570]'
+            }`}
+          >
+            📤 Follow-ups Due
+          </span>
           <p
             className={`mt-1 text-2xl font-extrabold tabular-nums ${
-              counts.FollowUps > 0 ? 'text-[#6D4AFF]' : 'text-[#1E1B2E]'
+              counts.FollowUps > 0 ? 'text-[#1D4ED8]' : 'text-[#1E1B2E]'
             }`}
           >
             {counts.FollowUps}
@@ -221,78 +272,175 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
         <button
           type="button"
           onClick={() => onChangeFilter(activeFilter === 'Offer' ? 'All' : 'Offer')}
-          className={`cursor-pointer rounded-2xl border bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7]/65 px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#16A34A] hover:shadow-xs ${
+          className={`cursor-pointer rounded-2xl border bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7]/65 px-3.5 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#16A34A] hover:shadow-xs ${
             activeFilter === 'Offer' ? 'border-[#16A34A] ring-2 ring-[#16A34A]/20' : 'border-[#BBF7D0]'
           }`}
         >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-[#15803D]">🏆 Offers</span>
-            <Award className="h-5 w-5 text-[#16A34A]" aria-hidden="true" />
-          </div>
+          <span className="text-[11px] font-bold text-[#15803D]">🏆 Offers</span>
           <p className="mt-1 text-2xl font-extrabold text-[#16A34A] tabular-nums">{counts.Offer}</p>
         </button>
       </div>
 
-      {/* Visual Status Breakdown Progress Bar */}
+      {/* Smart Application Sync Status Strip (Honest Connection Status + Gmail/CSV Sync) */}
+      <section
+        aria-label="Job platform sync status"
+        className="rounded-2xl border border-[#DDD6FE] bg-white p-4 shadow-2xs space-y-3"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Plug className="h-4 w-4 text-[#6D4AFF]" aria-hidden="true" />
+            <h2 className="text-sm font-bold text-[#1E1B2E]">
+              Smart Application Sync · Job Platforms
+            </h2>
+          </div>
+          <span className="text-[11px] text-[#5B5570]">
+            Direct APIs require partner access ·{' '}
+            <strong className="font-semibold text-[#4C2F96]">
+              {gmailReadConnected ? 'Gmail auto-detection & CSV import ready' : 'Connect Gmail or import CSV'}
+            </strong>
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+          {JOB_PLATFORM_ADAPTER_LIST.map((adapter) => {
+            const count = platformCounts[adapter.platform] || 0;
+            return (
+              <div
+                key={adapter.id}
+                className={`flex items-center justify-between gap-2.5 rounded-xl border p-3 ${adapter.accentBorder} ${adapter.accentBg}`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <PlatformLogo id={adapter.id} size="sm" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-[#1E1B2E] truncate">
+                      {adapter.name}{' '}
+                      <span className="font-semibold text-[#5B5570] tabular-nums">({count})</span>
+                    </p>
+                    <p className="text-[10px] font-medium text-[#9A3412] truncate">
+                      Direct API: {adapter.directApiStatus}
+                    </p>
+                  </div>
+                </div>
+
+                {onOpenPlatformConnect && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenPlatformConnect(adapter.id)}
+                    className="shrink-0 cursor-pointer rounded-lg border border-[#DDD6FE] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#4C2F96] hover:bg-[#EDE9FE] transition-colors whitespace-nowrap"
+                  >
+                    Connect
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Visual Status & Platform Breakdown */}
       {counts.All > 0 && (
         <section
-          aria-label="Application status breakdown"
-          className="rounded-2xl border border-[#E5DFF2] bg-white p-3.5 sm:p-4 shadow-2xs space-y-2.5"
+          aria-label="Application status and platform breakdown"
+          className="rounded-2xl border border-[#E5DFF2] bg-white p-3.5 sm:p-4 shadow-2xs space-y-3"
         >
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums">
-            <span className="font-bold text-[#1E1B2E]">📈 Pipeline Breakdown ({counts.All} total)</span>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-medium text-[#5B5570]">
-              <span>🔖 Saved: <strong className="text-[#1E1B2E]">{counts.Saved}</strong></span>
-              <span>📤 Applied: <strong className="text-[#1D4ED8]">{counts.Applied}</strong></span>
-              <span>🧪 Assessment: <strong className="text-[#C2410C]">{counts.Assessment}</strong></span>
-              <span>🎤 Interview: <strong className="text-[#5B38EE]">{counts.Interview}</strong></span>
-              <span>🏆 Offer: <strong className="text-[#15803D]">{counts.Offer}</strong></span>
-              <span>📁 Closed: <strong className="text-[#64748B]">{counts.Closed}</strong></span>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums">
+              <span className="font-bold text-[#1E1B2E]">📈 Pipeline Breakdown ({counts.All} total)</span>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-medium text-[#5B5570]">
+                <span>🔖 Saved: <strong className="text-[#1E1B2E]">{counts.Saved}</strong></span>
+                <span>📤 Applied: <strong className="text-[#1D4ED8]">{counts.Applied}</strong></span>
+                <span>🧪 Assessment: <strong className="text-[#C2410C]">{counts.Assessment}</strong></span>
+                <span>🎤 Interview: <strong className="text-[#5B38EE]">{counts.Interview}</strong></span>
+                <span>🏆 Offer: <strong className="text-[#15803D]">{counts.Offer}</strong></span>
+                <span>📁 Closed: <strong className="text-[#64748B]">{counts.Closed}</strong></span>
+              </div>
+            </div>
+            <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-[#F1ECFA]">
+              {counts.Offer > 0 && (
+                <div
+                  className="h-full bg-[#16A34A]"
+                  style={{ width: `${Math.round((counts.Offer / counts.All) * 100)}%` }}
+                  title={`Offer: ${counts.Offer}`}
+                />
+              )}
+              {counts.Interview > 0 && (
+                <div
+                  className="h-full bg-[#6D4AFF]"
+                  style={{ width: `${Math.round((counts.Interview / counts.All) * 100)}%` }}
+                  title={`Interview: ${counts.Interview}`}
+                />
+              )}
+              {counts.Assessment > 0 && (
+                <div
+                  className="h-full bg-[#EA580C]"
+                  style={{ width: `${Math.round((counts.Assessment / counts.All) * 100)}%` }}
+                  title={`Assessment: ${counts.Assessment}`}
+                />
+              )}
+              {counts.Applied > 0 && (
+                <div
+                  className="h-full bg-[#2563EB]"
+                  style={{ width: `${Math.round((counts.Applied / counts.All) * 100)}%` }}
+                  title={`Applied: ${counts.Applied}`}
+                />
+              )}
+              {counts.Saved > 0 && (
+                <div
+                  className="h-full bg-[#A78BFA]"
+                  style={{ width: `${Math.round((counts.Saved / counts.All) * 100)}%` }}
+                  title={`Saved: ${counts.Saved}`}
+                />
+              )}
+              {counts.Closed > 0 && (
+                <div
+                  className="h-full bg-[#94A3B8]"
+                  style={{ width: `${Math.round((counts.Closed / counts.All) * 100)}%` }}
+                  title={`Closed: ${counts.Closed}`}
+                />
+              )}
             </div>
           </div>
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-[#F1ECFA]">
-            {counts.Offer > 0 && (
-              <div
-                className="h-full bg-[#16A34A]"
-                style={{ width: `${Math.round((counts.Offer / counts.All) * 100)}%` }}
-                title={`Offer: ${counts.Offer}`}
-              />
-            )}
-            {counts.Interview > 0 && (
-              <div
-                className="h-full bg-[#6D4AFF]"
-                style={{ width: `${Math.round((counts.Interview / counts.All) * 100)}%` }}
-                title={`Interview: ${counts.Interview}`}
-              />
-            )}
-            {counts.Assessment > 0 && (
-              <div
-                className="h-full bg-[#EA580C]"
-                style={{ width: `${Math.round((counts.Assessment / counts.All) * 100)}%` }}
-                title={`Assessment: ${counts.Assessment}`}
-              />
-            )}
-            {counts.Applied > 0 && (
-              <div
-                className="h-full bg-[#2563EB]"
-                style={{ width: `${Math.round((counts.Applied / counts.All) * 100)}%` }}
-                title={`Applied: ${counts.Applied}`}
-              />
-            )}
-            {counts.Saved > 0 && (
-              <div
-                className="h-full bg-[#A78BFA]"
-                style={{ width: `${Math.round((counts.Saved / counts.All) * 100)}%` }}
-                title={`Saved: ${counts.Saved}`}
-              />
-            )}
-            {counts.Closed > 0 && (
-              <div
-                className="h-full bg-[#94A3B8]"
-                style={{ width: `${Math.round((counts.Closed / counts.All) * 100)}%` }}
-                title={`Closed: ${counts.Closed}`}
-              />
-            )}
+
+          {/* By Platform Breakdown */}
+          <div className="border-t border-[#F1ECFA] pt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="font-bold text-[#1E1B2E]">🌐 By Platform:</span>
+            <div className="flex flex-wrap items-center gap-1.5 tabular-nums">
+              <button
+                type="button"
+                onClick={() => setPlatformFilter('All')}
+                className={`cursor-pointer rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${
+                  platformFilter === 'All'
+                    ? 'bg-[#6D4AFF] text-white'
+                    : 'bg-[#FAF9FE] text-[#5B5570] hover:bg-[#EDE9FE]'
+                }`}
+              >
+                All ({counts.All})
+              </button>
+              {JOB_PLATFORM_SOURCES.map((p) => {
+                const cnt = platformCounts[p.source] || 0;
+                const active = platformFilter === p.source;
+                return (
+                  <button
+                    key={p.source}
+                    type="button"
+                    onClick={() => setPlatformFilter(active ? 'All' : p.source)}
+                    className={`inline-flex cursor-pointer items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold transition-colors ${
+                      active
+                        ? 'border-[#6D4AFF] bg-[#F3EFFF] text-[#4C2F96]'
+                        : 'border-[#E5DFF2] bg-white text-[#5B5570] hover:border-[#C4B5FD]'
+                    }`}
+                  >
+                    <span
+                      className="h-2 w-2 rounded-xs"
+                      style={{ backgroundColor: p.color }}
+                    />
+                    <span>
+                      {p.shortLabel} ({cnt})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </section>
       )}
@@ -349,14 +497,21 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
             />
           </div>
 
-          {activeFilter !== 'All' && (
+          {(activeFilter !== 'All' || platformFilter !== 'All') && (
             <div className="flex items-center gap-2 rounded-xl border border-[#DDD6FE] bg-[#FAF8FF] px-3 py-1.5 text-xs">
               <span className="text-[#5B5570]">
-                Showing: <strong className="font-semibold text-[#1E1B2E]">{FILTER_DISPLAY_LABEL[activeFilter]}</strong>
+                Showing:{' '}
+                <strong className="font-semibold text-[#1E1B2E]">
+                  {FILTER_DISPLAY_LABEL[activeFilter]}
+                  {platformFilter !== 'All' ? ` · ${platformFilter}` : ''}
+                </strong>
               </span>
               <button
                 type="button"
-                onClick={() => onChangeFilter('All')}
+                onClick={() => {
+                  onChangeFilter('All');
+                  setPlatformFilter('All');
+                }}
                 className="inline-flex cursor-pointer items-center gap-1 font-semibold text-[#6D4AFF] hover:underline whitespace-nowrap"
               >
                 <FilterX className="h-3.5 w-3.5" aria-hidden="true" />
@@ -388,20 +543,21 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
         <div className="flex flex-col items-center justify-center rounded-2xl border border-[#E5DFF2] bg-white px-6 py-12 text-center">
           <Briefcase className="h-9 w-9 text-[#C4B5FD]" />
           <h2 className="mt-3 text-base font-semibold text-[#1E1B2E]">
-            {searchQuery || activeFilter !== 'All'
+            {searchQuery || activeFilter !== 'All' || platformFilter !== 'All'
               ? 'No matching applications'
               : 'No applications tracked yet'}
           </h2>
           <p className="mt-1 max-w-sm text-sm text-[#5B5570]">
-            {searchQuery || activeFilter !== 'All'
+            {searchQuery || activeFilter !== 'All' || platformFilter !== 'All'
               ? 'Try clearing your filter or search to see all tracked applications.'
               : 'Use Add Application in the top bar to save roles, log interviews, and get suggested prep tasks.'}
           </p>
-          {(searchQuery || activeFilter !== 'All') && (
+          {(searchQuery || activeFilter !== 'All' || platformFilter !== 'All') && (
             <button
               type="button"
               onClick={() => {
                 onChangeFilter('All');
+                setPlatformFilter('All');
                 setSearchQuery('');
               }}
               className="mt-3 inline-flex min-h-[38px] cursor-pointer items-center gap-1.5 rounded-xl border border-[#DDD6FE] bg-[#F5F2FF] px-3.5 text-xs font-semibold text-[#5B38EE] hover:bg-[#EDE9FE] transition-colors"
@@ -452,7 +608,8 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
                     </select>
                   </div>
 
-                  <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#5B5570] tabular-nums">
+                  <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-[#5B5570] tabular-nums">
+                    <PlatformSourceBadge source={resolveApplicationPlatform(app)} />
                     <span>Applied {formatFriendlyDate(app.applicationDate, today)}</span>
                     {app.followUpDate && (
                       <>

@@ -49,12 +49,23 @@ export type ApplicationViewFilter =
   | 'Offer'
   | 'Closed';
 
+export type JobPlatformId = 'linkedin' | 'indeed' | 'naukri' | 'glassdoor';
+
+export type JobPlatformSource =
+  | 'LinkedIn Jobs'
+  | 'Indeed'
+  | 'Naukri'
+  | 'Glassdoor'
+  | 'Company Website'
+  | 'Referral / Other';
+
 export interface JobApplication {
   id: string;
   company: string;
   role: string;
   applicationDate: string; // YYYY-MM-DD
   applicationLink?: string;
+  sourcePlatform?: JobPlatformSource;
   status: ApplicationStatus;
   followUpDate?: string; // YYYY-MM-DD
   followUpTime?: string; // Optional HH:mm

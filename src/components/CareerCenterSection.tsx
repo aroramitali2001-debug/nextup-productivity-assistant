@@ -18,17 +18,18 @@ import {
   buildJobPlatformLinks,
   CAREER_FOCUS_OPTIONS,
   getDefaultSearchQueryForFocus,
-  JobPlatformCardInfo,
 } from '../services/careerGuidance';
 import {
   CareerFocusCategory,
   CareerInsightsPlan,
   JobApplication,
+  JobPlatformId,
   Task,
   TaskCategory,
   TaskPriority,
 } from '../types/nextup';
 import { addDaysToDateKey, toLocalDateKey } from '../utils/dateUtils';
+import { PlatformLogo } from './PlatformLogo';
 
 interface CareerCenterSectionProps {
   firstName: string;
@@ -49,49 +50,10 @@ interface CareerCenterSectionProps {
     deadlineTime?: string,
     estimatedMinutes?: number
   ) => void;
+  onOpenPlatformConnect?: (platformId: JobPlatformId) => void;
 }
 
 type InsightTab = 'roles_skills' | 'prep_strategy' | 'resources_keywords';
-
-const PlatformLogo: React.FC<{ id: JobPlatformCardInfo['id'] }> = ({ id }) => {
-  switch (id) {
-    case 'linkedin':
-      return (
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0A66C2] text-white shadow-2xs">
-          <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current" aria-hidden="true">
-            <path d="M6.94 8.5H3.56V19.5H6.94V8.5ZM5.25 3.5C4.14 3.5 3.25 4.39 3.25 5.5C3.25 6.6 4.14 7.5 5.25 7.5C6.35 7.5 7.25 6.6 7.25 5.5C7.25 4.39 6.35 3.5 5.25 3.5ZM20.44 13.02C20.44 9.88 18.76 8.22 16.16 8.22C14.37 8.22 13.48 9.2 13.02 9.93V8.5H9.65C9.7 9.48 9.65 19.5 9.65 19.5H13.02V13.36C13.02 13.02 13.05 12.69 13.15 12.45C13.42 11.78 14.03 11.09 15.07 11.09C16.41 11.09 17.06 12.11 17.06 13.6V19.5H20.44V13.02Z" />
-          </svg>
-        </span>
-      );
-    case 'indeed':
-      return (
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2557A7] text-white shadow-2xs">
-          <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current" aria-hidden="true">
-            <circle cx="12" cy="5.5" r="2.2" />
-            <path d="M9.8 10.2C9.8 9.4 10.8 8.8 12 8.8C13.2 8.8 14.2 9.4 14.2 10.2V19.5C14.2 20.3 13.2 21 12 21C10.8 21 9.8 20.3 9.8 19.5V10.2Z" />
-          </svg>
-        </span>
-      );
-    case 'naukri':
-      return (
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0F766E] text-white shadow-2xs">
-          <svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-current" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M6 19V5l12 14V5" />
-          </svg>
-        </span>
-      );
-    case 'glassdoor':
-      return (
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0CAA41] text-white shadow-2xs">
-          <svg viewBox="0 0 24 24" className="h-6 w-6 fill-none stroke-current" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M8 5h9v3H8a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
-            <path d="M7 16h9v3H7a1 1 0 0 1-1-1v-1a1 1 0 0 1 1-1Z" />
-            <path d="M16 8v8" />
-          </svg>
-        </span>
-      );
-  }
-};
 
 export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
   firstName,
@@ -104,6 +66,7 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
   onChangeCustomCareerFocus,
   onRefreshInsights,
   onQuickAddCareerTask,
+  onOpenPlatformConnect,
 }) => {
   const [activeTab, setActiveTab] = useState<InsightTab>('roles_skills');
   const [selectedSearchOverride, setSelectedSearchOverride] = useState<string>('');
@@ -653,8 +616,8 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
               </h2>
               <p className="text-xs text-[#5B5570]">
                 External job boards pre-searched for{' '}
-                <strong className="font-semibold text-[#4C2F96]">{activeQuery}</strong> · Opens in a
-                new tab (not connected or synced)
+                <strong className="font-semibold text-[#4C2F96]">{activeQuery}</strong> · Direct
+                platform APIs: Not connected (use Sync options for Gmail/CSV import)
               </p>
             </div>
           </div>
@@ -681,21 +644,33 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
                   <PlatformLogo id={platform.id} />
                   <div className="min-w-0">
                     <h3 className="text-sm font-bold text-[#1E1B2E]">{platform.name}</h3>
-                    <p className="text-[11px] font-medium text-[#5B5570]">External job search</p>
+                    <p className="text-[11px] font-medium text-[#9A3412]">
+                      Direct API: Not connected
+                    </p>
                   </div>
                 </div>
                 <p className="text-xs leading-relaxed text-[#4C4563]">{platform.description}</p>
               </div>
 
               <div className="mt-4 pt-3 border-t border-black/5 flex items-center justify-between gap-2">
-                <span className="truncate text-[11px] font-medium text-[#5B5570]" title={platform.queryLabel}>
-                  Search: {platform.queryLabel}
-                </span>
+                {onOpenPlatformConnect ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenPlatformConnect(platform.id)}
+                    className="inline-flex min-h-[36px] cursor-pointer items-center rounded-xl border border-[#DDD6FE] bg-white px-2.5 text-xs font-semibold text-[#4C2F96] hover:bg-[#EDE9FE] transition-colors whitespace-nowrap"
+                  >
+                    Sync options
+                  </button>
+                ) : (
+                  <span className="truncate text-[11px] font-medium text-[#5B5570]" title={platform.queryLabel}>
+                    Search: {platform.queryLabel}
+                  </span>
+                )}
                 <a
                   href={platform.searchUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`inline-flex min-h-[38px] shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-xs font-semibold text-white transition-colors whitespace-nowrap ${platform.buttonBg}`}
+                  className={`inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold text-white transition-colors whitespace-nowrap ${platform.buttonBg}`}
                 >
                   <span>Explore jobs</span>
                   <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />

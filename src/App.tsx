@@ -12,6 +12,7 @@ import { ApplicationFormModal } from './components/ApplicationFormModal';
 import { ApplicationSuggestionsModal } from './components/ApplicationSuggestionsModal';
 import { MiddayCheckInModal } from './components/MiddayCheckInModal';
 import { OfflineIndicator } from './components/PWAInstallButton';
+import { PlatformConnectModal } from './components/PlatformConnectModal';
 import { PreferencesModal } from './components/PreferencesModal';
 import { ReplanDayModal } from './components/ReplanDayModal';
 import { TaskFormModal } from './components/TaskFormModal';
@@ -75,6 +76,8 @@ import {
   CareerFocusCategory,
   CareerInsightsPlan,
   JobApplication,
+  JobPlatformId,
+  JobPlatformSource,
   NavTab,
   ReplanResult,
   StudentProfile,
@@ -117,6 +120,10 @@ export default function App() {
 
   const [appModalOpen, setAppModalOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<JobApplication | null>(null);
+  const [defaultAppPlatform, setDefaultAppPlatform] = useState<JobPlatformSource | undefined>(
+    undefined
+  );
+  const [platformConnectModalId, setPlatformConnectModalId] = useState<JobPlatformId | null>(null);
   const [prefsModalOpen, setPrefsModalOpen] = useState(false);
 
   // AI Daily Planner & Replan & Midday Check-in
@@ -940,13 +947,15 @@ export default function App() {
     setTaskModalOpen(true);
   }, []);
 
-  const openNewAppModal = useCallback(() => {
+  const openNewAppModal = useCallback((defaultPlatform?: JobPlatformSource) => {
     setEditingApp(null);
+    setDefaultAppPlatform(defaultPlatform);
     setAppModalOpen(true);
   }, []);
 
   const openEditAppModal = useCallback((app: JobApplication) => {
     setEditingApp(app);
+    setDefaultAppPlatform(undefined);
     setAppModalOpen(true);
   }, []);
 
@@ -1024,35 +1033,87 @@ export default function App() {
   );
 
   const handleImportApplications = useCallback(
-    (imported: Omit<JobApplication, 'id' | 'createdAt' | 'updatedAt'>[]) => {
+    (
+      imported: Omit<JobApplication, 'id' | 'createdAt' | 'updatedAt'>[],
+      sourceLabel = 'Google Sheets'
+    ) => {
       const now = new Date().toISOString();
-      const existingKeys = new Set(
-        applications.map(
-          (a) => `${a.company.trim().toLowerCase()}::${a.role.trim().toLowerCase()}`
-        )
+      const stageRank: Record<ApplicationStatus, number> = {
+        Saved: 1,
+        Applied: 2,
+        Assessment: 3,
+        Interview: 4,
+        Offer: 5,
+        Rejected: 5,
+      };
+      const existingByKey = new Map(
+        applications.map((a) => [
+          `${a.company.trim().toLowerCase()}::${a.role.trim().toLowerCase()}`,
+          a,
+        ])
       );
       const toAdd: JobApplication[] = [];
+      const updatesById = new Map<string, Partial<JobApplication>>();
+
       for (const item of imported) {
         const key = `${item.company.trim().toLowerCase()}::${item.role.trim().toLowerCase()}`;
-        if (existingKeys.has(key)) continue;
-        existingKeys.add(key);
-        toAdd.push({
+        const existing = existingByKey.get(key);
+        if (existing) {
+          const shouldUpgradeStatus =
+            stageRank[item.status] > stageRank[existing.status] &&
+            existing.status !== 'Offer' &&
+            existing.status !== 'Rejected';
+          const needsSource = !existing.sourcePlatform && item.sourcePlatform;
+          const needsLink = !existing.applicationLink && item.applicationLink;
+          if (shouldUpgradeStatus || needsSource || needsLink) {
+            updatesById.set(existing.id, {
+              status: shouldUpgradeStatus ? item.status : existing.status,
+              sourcePlatform: existing.sourcePlatform || item.sourcePlatform,
+              applicationLink: existing.applicationLink || item.applicationLink,
+              updatedAt: now,
+              isSample: false,
+            });
+          }
+          continue;
+        }
+        const created: JobApplication = {
           id: `app-${Date.now()}-${toAdd.length}-${Math.random().toString(36).slice(2, 6)}`,
           ...item,
           createdAt: now,
           updatedAt: now,
           isSample: false,
+        };
+        existingByKey.set(key, created);
+        toAdd.push(created);
+      }
+
+      if (toAdd.length > 0 || updatesById.size > 0) {
+        setApplications((prev) => [
+          ...toAdd,
+          ...prev.map((a) => {
+            const patch = updatesById.get(a.id);
+            return patch ? { ...a, ...patch } : a;
+          }),
+        ]);
+      }
+
+      if (toAdd.length > 0 && updatesById.size > 0) {
+        setToast({
+          message: `Imported ${toAdd.length} and updated ${updatesById.size} applications from ${sourceLabel}`,
+        });
+      } else if (toAdd.length > 0) {
+        setToast({
+          message: `Imported ${toAdd.length} ${toAdd.length === 1 ? 'application' : 'applications'} from ${sourceLabel}`,
+        });
+      } else if (updatesById.size > 0) {
+        setToast({
+          message: `Updated ${updatesById.size} tracked ${updatesById.size === 1 ? 'application' : 'applications'} from ${sourceLabel}`,
+        });
+      } else {
+        setToast({
+          message: `All applications from ${sourceLabel} are already in your tracker`,
         });
       }
-      if (toAdd.length > 0) {
-        setApplications((prev) => [...toAdd, ...prev]);
-      }
-      setToast({
-        message:
-          toAdd.length > 0
-            ? `Imported ${toAdd.length} ${toAdd.length === 1 ? 'application' : 'applications'} from Google Sheets`
-            : 'All rows from that sheet are already in your tracker',
-      });
     },
     [applications]
   );
@@ -1355,6 +1416,7 @@ export default function App() {
             onSelectCareerFocus={handleSelectCareerFocus}
             onChangeCustomCareerFocus={handleChangeCustomCareerFocus}
             onRefreshCareerInsights={() => void handleRefreshCareerInsights()}
+            onOpenPlatformConnect={(platformId) => setPlatformConnectModalId(platformId)}
             onNavigateTab={handleNavigateTab}
             calendarConnected={calendarConnected}
             calendarEvents={calendarEvents}
@@ -1384,11 +1446,13 @@ export default function App() {
           <ApplicationsView
             applications={applications}
             activeFilter={appViewFilter}
+            gmailReadConnected={gmailReadConnected}
             onChangeFilter={setAppViewFilter}
             onEditApplication={openEditAppModal}
             onDeleteApplication={handleDeleteApplication}
             onUpdateStatus={handleUpdateApplicationStatus}
             onClearSampleApplications={handleClearSampleApplications}
+            onOpenPlatformConnect={(platformId) => setPlatformConnectModalId(platformId)}
           />
         )}
 
@@ -1433,6 +1497,7 @@ export default function App() {
             applications={applications}
             onCreateTaskFromIntegration={handleCreateTaskFromIntegration}
             onImportApplications={handleImportApplications}
+            onOpenPlatformConnect={(platformId) => setPlatformConnectModalId(platformId)}
             onSendMorningBriefingEmailNow={handleSendMorningBriefingEmailNow}
             onOpenReminderPreferences={() => setPrefsModalOpen(true)}
             onNotify={(msg) => setToast({ message: msg })}
@@ -1506,8 +1571,20 @@ export default function App() {
       <ApplicationFormModal
         isOpen={appModalOpen}
         initialApplication={editingApp}
+        defaultPlatform={defaultAppPlatform}
         onClose={() => setAppModalOpen(false)}
         onSave={handleSaveApplication}
+      />
+
+      <PlatformConnectModal
+        platformId={platformConnectModalId}
+        accessToken={accessToken}
+        gmailReadConnected={gmailReadConnected}
+        isSigningIn={isSigningIn}
+        onClose={() => setPlatformConnectModalId(null)}
+        onConnectGoogle={() => handleGoogleSignIn('auto')}
+        onImportApplications={handleImportApplications}
+        onOpenManualTrack={(platform) => openNewAppModal(platform)}
       />
 
       <ApplicationSuggestionsModal

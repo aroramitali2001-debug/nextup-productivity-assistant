@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Clock, X } from 'lucide-react';
-import { ApplicationStatus, JobApplication } from '../types/nextup';
+import {
+  inferPlatformFromUrl,
+  JOB_PLATFORM_SOURCES,
+  resolveApplicationPlatform,
+} from '../services/jobPlatforms';
+import { ApplicationStatus, JobApplication, JobPlatformSource } from '../types/nextup';
 import { addDaysToDateKey, toLocalDateKey } from '../utils/dateUtils';
 
 interface ApplicationFormModalProps {
   isOpen: boolean;
   initialApplication?: JobApplication | null;
+  defaultPlatform?: JobPlatformSource;
   onClose: () => void;
   onSave: (
     data: Omit<JobApplication, 'id' | 'createdAt' | 'updatedAt'>,
@@ -25,6 +31,7 @@ const STATUSES: ApplicationStatus[] = [
 export const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({
   isOpen,
   initialApplication,
+  defaultPlatform,
   onClose,
   onSave,
 }) => {
@@ -33,6 +40,8 @@ export const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({
   const [role, setRole] = useState('');
   const [applicationDate, setApplicationDate] = useState(today);
   const [applicationLink, setApplicationLink] = useState('');
+  const [sourcePlatform, setSourcePlatform] = useState<JobPlatformSource>('LinkedIn Jobs');
+  const [platformManuallyPicked, setPlatformManuallyPicked] = useState(false);
   const [status, setStatus] = useState<ApplicationStatus>('Applied');
   const [followUpDate, setFollowUpDate] = useState('');
   const [includeFollowUpTime, setIncludeFollowUpTime] = useState(false);
@@ -50,6 +59,8 @@ export const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({
       setRole(initialApplication.role);
       setApplicationDate(initialApplication.applicationDate);
       setApplicationLink(initialApplication.applicationLink ?? '');
+      setSourcePlatform(resolveApplicationPlatform(initialApplication));
+      setPlatformManuallyPicked(Boolean(initialApplication.sourcePlatform));
       setStatus(initialApplication.status);
       setFollowUpDate(initialApplication.followUpDate ?? '');
       setIncludeFollowUpTime(Boolean(initialApplication.followUpTime));
@@ -63,6 +74,8 @@ export const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({
       setRole('');
       setApplicationDate(today);
       setApplicationLink('');
+      setSourcePlatform(defaultPlatform ?? 'LinkedIn Jobs');
+      setPlatformManuallyPicked(Boolean(defaultPlatform));
       setStatus('Applied');
       setFollowUpDate(addDaysToDateKey(today, 7));
       setIncludeFollowUpTime(false);
@@ -73,9 +86,19 @@ export const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({
       setReflectionNote('');
     }
     setError('');
-  }, [isOpen, initialApplication, today]);
+  }, [isOpen, initialApplication, defaultPlatform, today]);
 
   if (!isOpen) return null;
+
+  const handleLinkChange = (value: string) => {
+    setApplicationLink(value);
+    if (!platformManuallyPicked) {
+      const detected = inferPlatformFromUrl(value, sourcePlatform);
+      if (detected !== sourcePlatform) {
+        setSourcePlatform(detected);
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +118,7 @@ export const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({
         role: role.trim(),
         applicationDate: applicationDate || today,
         applicationLink: formattedLink || undefined,
+        sourcePlatform,
         status,
         followUpDate: followUpDate || undefined,
         followUpTime:
@@ -274,6 +298,27 @@ export const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({
             </div>
           </div>
 
+          <div>
+            <label htmlFor="app-platform-select" className="block text-sm font-medium text-[#1E1B2E]">
+              Source platform
+            </label>
+            <select
+              id="app-platform-select"
+              value={sourcePlatform}
+              onChange={(e) => {
+                setSourcePlatform(e.target.value as JobPlatformSource);
+                setPlatformManuallyPicked(true);
+              }}
+              className="mt-1.5 w-full min-h-[44px] rounded-xl border border-[#E5DFF2] bg-[#FAF9FE] px-3.5 py-2 text-sm text-[#1E1B2E] focus:border-[#6D4AFF] focus:bg-white focus:outline-none"
+            >
+              {JOB_PLATFORM_SOURCES.map((p) => (
+                <option key={p.source} value={p.source}>
+                  {p.source}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="app-link-input" className="block text-sm font-medium text-[#1E1B2E]">
@@ -283,8 +328,8 @@ export const ApplicationFormModal: React.FC<ApplicationFormModalProps> = ({
                 id="app-link-input"
                 type="text"
                 value={applicationLink}
-                onChange={(e) => setApplicationLink(e.target.value)}
-                placeholder="https://company.com/careers"
+                onChange={(e) => handleLinkChange(e.target.value)}
+                placeholder="https://linkedin.com/jobs/..."
                 className="mt-1.5 w-full min-h-[44px] rounded-xl border border-[#E5DFF2] bg-[#FAF9FE] px-3.5 py-2 text-sm text-[#1E1B2E] placeholder:text-[#8E87A6] focus:border-[#6D4AFF] focus:bg-white focus:outline-none"
               />
             </div>

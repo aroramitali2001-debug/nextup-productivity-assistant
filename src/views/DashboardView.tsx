@@ -33,6 +33,7 @@ import {
   CareerFocusCategory,
   CareerInsightsPlan,
   JobApplication,
+  JobPlatformId,
   NavTab,
   OverloadedDayWarning,
   StudentProfile,
@@ -99,6 +100,7 @@ interface DashboardViewProps {
   onSelectCareerFocus: (category: CareerFocusCategory) => void;
   onChangeCustomCareerFocus: (value: string) => void;
   onRefreshCareerInsights: () => void;
+  onOpenPlatformConnect?: (platformId: JobPlatformId) => void;
   onNavigateTab: (
     tab: NavTab,
     taskFilter?: TaskViewFilter,
@@ -142,6 +144,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSelectCareerFocus,
   onChangeCustomCareerFocus,
   onRefreshCareerInsights,
+  onOpenPlatformConnect,
   onNavigateTab,
 }) => {
   const [currentHour, setCurrentHour] = useState(() =>
@@ -885,6 +888,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onChangeCustomCareerFocus={onChangeCustomCareerFocus}
         onRefreshInsights={onRefreshCareerInsights}
         onQuickAddCareerTask={onQuickAddTask}
+        onOpenPlatformConnect={onOpenPlatformConnect}
       />
     </div>
   );

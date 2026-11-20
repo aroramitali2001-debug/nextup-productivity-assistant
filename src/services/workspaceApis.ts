@@ -1,5 +1,16 @@
-import { ApplicationStatus, JobApplication, Task } from '../types/nextup';
+import {
+  ApplicationStatus,
+  JobApplication,
+  JobPlatformId,
+  JobPlatformSource,
+  Task,
+} from '../types/nextup';
 import { addDaysToDateKey, parseDateKey, toLocalDateKey } from '../utils/dateUtils';
+import {
+  inferPlatformFromUrl,
+  JOB_PLATFORM_ADAPTERS,
+  normalizePlatformSource,
+} from './jobPlatforms';
 
 export interface CalendarEventItem {
   id: string;
@@ -25,8 +36,12 @@ export interface RecruitmentEmailInsight {
   from: string;
   date: string;
   snippet: string;
-  detectedType: 'Interview' | 'Assessment' | 'Offer' | 'Rejection' | 'Update';
+  detectedType: 'Applied' | 'Interview' | 'Assessment' | 'Offer' | 'Rejection' | 'Update';
+  sourcePlatform?: JobPlatformSource;
   suggestedCompany?: string;
+  suggestedRole?: string;
+  applicationDate?: string;
+  detectedUrl?: string;
   suggestedAction: string;
 }
 
@@ -244,8 +259,8 @@ export async function syncApplicationsToSheet(
   sheetName: string,
   applications: JobApplication[]
 ): Promise<{ updatedRows: number }> {
-  const safeRange = `'${sheetName.replace(/'/g, "''")}'!A1:I${applications.length + 1}`;
-  const clearRange = `'${sheetName.replace(/'/g, "''")}'!A:I`;
+  const safeRange = `'${sheetName.replace(/'/g, "''")}'!A1:J${applications.length + 1}`;
+  const clearRange = `'${sheetName.replace(/'/g, "''")}'!A:J`;
 
   await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(clearRange)}:clear`,
@@ -266,6 +281,7 @@ export async function syncApplicationsToSheet(
       'Next Action',
       'Link',
       'Notes',
+      'Source Platform',
     ],
     ...applications.map((app) => [
       app.company,
@@ -277,6 +293,7 @@ export async function syncApplicationsToSheet(
       app.nextAction ?? '',
       app.applicationLink ?? '',
       app.notes ?? '',
+      app.sourcePlatform ?? inferPlatformFromUrl(app.applicationLink, 'Company Website'),
     ]),
   ];
 
@@ -305,7 +322,7 @@ export async function importApplicationsFromSheet(
   spreadsheetId: string,
   sheetName: string
 ): Promise<Omit<JobApplication, 'id' | 'createdAt' | 'updatedAt'>[]> {
-  const range = `'${sheetName.replace(/'/g, "''")}'!A1:I100`;
+  const range = `'${sheetName.replace(/'/g, "''")}'!A1:J100`;
   const res = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}`,
     {
@@ -345,6 +362,11 @@ export async function importApplicationsFromSheet(
       const followUpTime = /^\d{2}:\d{2}$/.test(followUpParts[1] || '')
         ? followUpParts[1]
         : undefined;
+      const applicationLink = r[7]?.trim() || undefined;
+      const rawSource = r[9]?.trim();
+      const sourcePlatform = rawSource
+        ? normalizePlatformSource(rawSource, inferPlatformFromUrl(applicationLink, 'Company Website'))
+        : inferPlatformFromUrl(applicationLink, 'Company Website');
 
       return {
         company: r[0].trim(),
@@ -357,22 +379,118 @@ export async function importApplicationsFromSheet(
         followUpTime,
         recruiterContact: r[5]?.trim() || undefined,
         nextAction: r[6]?.trim() || undefined,
-        applicationLink: r[7]?.trim() || undefined,
+        applicationLink,
         notes: r[8]?.trim() || undefined,
+        sourcePlatform,
       };
     });
 }
 
 // ---------------------------------------------------------------------------
-// 3. Gmail API (Read-only recruitment scan)
+// 3. Gmail API (Read-only recruitment & application confirmation scan)
 // ---------------------------------------------------------------------------
 
-function classifyRecruitmentEmail(
+function detectEmailPlatform(from: string, subject: string, snippet: string): JobPlatformSource | undefined {
+  const hay = `${from} ${subject} ${snippet}`.toLowerCase();
+  if (hay.includes('linkedin.com') || hay.includes('linkedin jobs')) return 'LinkedIn Jobs';
+  if (hay.includes('indeed.com') || hay.includes('indeedemail') || hay.includes('indeed application')) {
+    return 'Indeed';
+  }
+  if (hay.includes('naukri.com') || /\bnaukri\b/.test(hay)) return 'Naukri';
+  if (hay.includes('glassdoor.com') || /\bglassdoor\b/.test(hay)) return 'Glassdoor';
+  return undefined;
+}
+
+function extractRoleAndCompany(
   subject: string,
   from: string,
   snippet: string
-): Pick<RecruitmentEmailInsight, 'detectedType' | 'suggestedCompany' | 'suggestedAction'> {
+): { suggestedCompany?: string; suggestedRole?: string } {
+  const cleanSubject = subject.trim();
+
+  // Pattern 1: "Your application to <Role> at <Company>" or "Your application for <Role> at <Company>"
+  const roleAtCompany =
+    cleanSubject.match(
+      /(?:your application (?:to|for)|applied (?:to|for)|application for)\s+(.+?)\s+(?:at|with)\s+([^|–—-]+?)(?:\s+(?:was sent|has been|is submitted)|[.!]?\s*$)/i
+    ) ||
+    snippet.match(
+      /(?:your application (?:to|for)|you applied (?:to|for))\s+(.+?)\s+(?:at|with)\s+([A-Z][^.,;\n]{1,40}?)(?=\s+(?:was sent|has been|is submitted|successfully)|[.,;\n]|$)/i
+    );
+  if (roleAtCompany) {
+    return {
+      suggestedRole: roleAtCompany[1].trim(),
+      suggestedCompany: roleAtCompany[2].replace(/\s+(?:was sent|has been|is submitted)$/i, '').trim(),
+    };
+  }
+
+  // Pattern 2: "Mitali, your application was sent to <Company>" (LinkedIn classic format)
+  const sentToCompany =
+    cleanSubject.match(/your application was sent to\s+(.+?)(?:[!.]|\s*$)/i) ||
+    snippet.match(/your application was sent to\s+([^.,;\n]+)/i);
+  if (sentToCompany) {
+    const company = sentToCompany[1].trim();
+    const roleMatch = snippet.match(/(?:for|role[:\s]+)\s*([^.,;\n]{3,60}?)\s+(?:at|with)\s+/i);
+    return {
+      suggestedCompany: company,
+      suggestedRole: roleMatch?.[1]?.trim(),
+    };
+  }
+
+  // Pattern 3: "Thank you for applying to <Company>" / "Indeed Application: <Role>"
+  const indeedRole = cleanSubject.match(/Indeed Application:\s*(.+?)(?:\s*-\s*(.+))?$/i);
+  if (indeedRole) {
+    return {
+      suggestedRole: indeedRole[1]?.trim(),
+      suggestedCompany: indeedRole[2]?.trim(),
+    };
+  }
+
+  const thankApplying = cleanSubject.match(
+    /thank you for applying (?:to|at|for)\s+(.+?)(?:\s+(?:at|-|–)\s+(.+))?$/i
+  );
+  if (thankApplying) {
+    if (thankApplying[2]) {
+      return {
+        suggestedRole: thankApplying[1].trim(),
+        suggestedCompany: thankApplying[2].trim(),
+      };
+    }
+    return {
+      suggestedCompany: thankApplying[1].trim(),
+    };
+  }
+
+  // Fallback: sender display name if not a generic platform or noreply name
+  const fromMatch = from.match(/^"?([^"<@]+?)"?\s*</);
+  const rawSender = fromMatch?.[1]?.trim();
+  const isGenericSender =
+    !rawSender ||
+    /noreply|no-reply|careers|recruiting|notifications|linkedin|indeed|naukri|glassdoor|jobs/i.test(
+      rawSender
+    );
+
+  return {
+    suggestedCompany: isGenericSender ? undefined : rawSender,
+  };
+}
+
+export function classifyRecruitmentEmail(
+  subject: string,
+  from: string,
+  snippet: string,
+  dateHeader?: string
+): Pick<
+  RecruitmentEmailInsight,
+  | 'detectedType'
+  | 'sourcePlatform'
+  | 'suggestedCompany'
+  | 'suggestedRole'
+  | 'applicationDate'
+  | 'detectedUrl'
+  | 'suggestedAction'
+> {
   const combined = `${subject} ${snippet}`.toLowerCase();
+  const sourcePlatform = detectEmailPlatform(from, subject, snippet);
 
   let detectedType: RecruitmentEmailInsight['detectedType'] = 'Update';
   let suggestedAction = 'Review email and update application status if needed';
@@ -389,27 +507,51 @@ function classifyRecruitmentEmail(
   } else if (/\b(unfortunately|not moving forward|other candidates|regret to inform)\b/.test(combined)) {
     detectedType = 'Rejection';
     suggestedAction = 'Mark application as Closed (Rejected)';
+  } else if (
+    /\b(application (?:was |has been )?(?:sent|submitted|received)|thank you for applying|successfully applied|you applied (?:to|for)|indeed application:)\b/.test(
+      combined
+    )
+  ) {
+    detectedType = 'Applied';
+    suggestedAction = 'Import confirmation directly into Application Tracker under Applied';
   }
 
-  // Heuristic company extraction from sender display name or subject
-  const fromMatch = from.match(/^"?([^"<@]+?)"?\s*</);
-  const rawSender = fromMatch?.[1]?.trim();
-  const suggestedCompany =
-    rawSender && !/noreply|no-reply|careers|recruiting|notifications/i.test(rawSender)
-      ? rawSender
-      : undefined;
+  const { suggestedCompany, suggestedRole } = extractRoleAndCompany(subject, from, snippet);
 
-  return { detectedType, suggestedCompany, suggestedAction };
+  let applicationDate = toLocalDateKey();
+  if (dateHeader) {
+    const parsed = new Date(dateHeader);
+    if (!Number.isNaN(parsed.getTime())) {
+      applicationDate = toLocalDateKey(parsed);
+    }
+  }
+
+  const urlMatch = snippet.match(/https?:\/\/[^\s)>"']+/i);
+  const detectedUrl =
+    urlMatch && !/unsubscribe|preferences|tracking/i.test(urlMatch[0]) ? urlMatch[0] : undefined;
+
+  return {
+    detectedType,
+    sourcePlatform,
+    suggestedCompany,
+    suggestedRole,
+    applicationDate,
+    detectedUrl,
+    suggestedAction,
+  };
 }
 
 export async function scanRecruitmentEmails(
-  accessToken: string
+  accessToken: string,
+  platformFilter?: JobPlatformId
 ): Promise<RecruitmentEmailInsight[]> {
-  const query =
-    '(interview OR assessment OR hackerrank OR "thank you for applying" OR recruiter OR internship OR offer) newer_than:30d';
+  const query = platformFilter
+    ? JOB_PLATFORM_ADAPTERS[platformFilter].gmailSearchQuery
+    : '("application was sent" OR "application submitted" OR "thank you for applying" OR interview OR assessment OR hackerrank OR recruiter OR offer) newer_than:45d';
+
   const listUrl = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
   listUrl.searchParams.set('q', query);
-  listUrl.searchParams.set('maxResults', '10');
+  listUrl.searchParams.set('maxResults', '15');
 
   const listRes = await fetch(listUrl.toString(), {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -449,7 +591,7 @@ export async function scanRecruitmentEmails(
       const from = getHeader('From');
       const date = getHeader('Date');
       const snippet = msg.snippet || '';
-      const classified = classifyRecruitmentEmail(subject, from, snippet);
+      const classified = classifyRecruitmentEmail(subject, from, snippet, date);
 
       return {
         id: msg.id,

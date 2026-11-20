@@ -18,10 +18,12 @@ import {
   Target,
   TrendingUp,
 } from 'lucide-react';
+import { JOB_PLATFORM_SOURCES, resolveApplicationPlatform } from '../services/jobPlatforms';
 import {
   ApplicationStatus,
   ApplicationViewFilter,
   JobApplication,
+  JobPlatformSource,
   NavTab,
   StudentProfile,
   Task,
@@ -37,7 +39,6 @@ import {
   parseDateKey,
   toLocalDateKey,
 } from '../utils/dateUtils';
-import { CATEGORY_COLOR } from '../utils/semanticColors';
 
 interface DashboardVisualAnalyticsProps {
   profile: StudentProfile;
@@ -333,6 +334,18 @@ export const DashboardVisualAnalytics: React.FC<DashboardVisualAnalyticsProps> =
           )
         : 0;
 
+    const platformCounts = JOB_PLATFORM_SOURCES.reduce<Record<JobPlatformSource, number>>(
+      (acc, item) => {
+        acc[item.source] = 0;
+        return acc;
+      },
+      {} as Record<JobPlatformSource, number>
+    );
+    for (const app of applications) {
+      const src = resolveApplicationPlatform(app);
+      platformCounts[src] = (platformCounts[src] || 0) + 1;
+    }
+
     return {
       totalTasks,
       completedCount: completed.length,
@@ -353,6 +366,7 @@ export const DashboardVisualAnalytics: React.FC<DashboardVisualAnalyticsProps> =
       offersCount,
       followUpsDue,
       statusCounts,
+      platformCounts,
       progressRatePct,
     };
   }, [
@@ -1034,26 +1048,96 @@ export const DashboardVisualAnalytics: React.FC<DashboardVisualAnalyticsProps> =
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#FDE8D3] pt-3">
-                <div className="rounded-xl bg-[#F5F1FF] px-2.5 py-2 text-center">
-                  <p className="text-[10px] font-semibold text-[#4C2F96]">Advancement</p>
-                  <p className="text-sm font-extrabold text-[#5B38EE] tabular-nums">
-                    {stats.progressRatePct}%
-                  </p>
+              <div className="mt-3.5 border-t border-[#FDE8D3] pt-3 space-y-2.5">
+                <div className="grid grid-cols-4 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onNavigateTab('applications', undefined, 'Interview')}
+                    className="cursor-pointer rounded-xl bg-[#F5F1FF] px-1.5 py-2 text-center hover:bg-[#EDE9FE] transition-colors"
+                  >
+                    <p className="text-[10px] font-semibold text-[#4C2F96] truncate">Interviews</p>
+                    <p className="text-sm font-extrabold text-[#5B38EE] tabular-nums">
+                      {stats.interviewsScheduled}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateTab('applications', undefined, 'Assessment')}
+                    className="cursor-pointer rounded-xl bg-[#FFF7ED] px-1.5 py-2 text-center hover:bg-[#FFEDD5] transition-colors"
+                  >
+                    <p className="text-[10px] font-semibold text-[#9A3412] truncate">Assessments</p>
+                    <p className="text-sm font-extrabold text-[#C2410C] tabular-nums">
+                      {stats.assessmentsCount}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateTab('applications', undefined, 'FollowUps')}
+                    className="cursor-pointer rounded-xl bg-[#EFF6FF] px-1.5 py-2 text-center hover:bg-[#DBEAFE] transition-colors"
+                  >
+                    <p className="text-[10px] font-semibold text-[#1D4ED8] truncate">Follow-ups</p>
+                    <p className="text-sm font-extrabold text-[#1D4ED8] tabular-nums">
+                      {stats.followUpsDue}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateTab('applications', undefined, 'Offer')}
+                    className="cursor-pointer rounded-xl bg-[#F0FDF4] px-1.5 py-2 text-center hover:bg-[#DCFCE7] transition-colors"
+                  >
+                    <p className="text-[10px] font-semibold text-[#15803D] truncate">Offers</p>
+                    <p className="text-sm font-extrabold text-[#15803D] tabular-nums">
+                      <Award className="mr-0.5 inline h-3 w-3" aria-hidden="true" />
+                      {stats.offersCount}
+                    </p>
+                  </button>
                 </div>
-                <div className="rounded-xl bg-[#FFF7ED] px-2.5 py-2 text-center">
-                  <p className="text-[10px] font-semibold text-[#9A3412]">Follow-ups</p>
-                  <p className="text-sm font-extrabold text-[#C2410C] tabular-nums">
-                    {stats.followUpsDue}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-[#F0FDF4] px-2.5 py-2 text-center">
-                  <p className="text-[10px] font-semibold text-[#15803D]">Offers</p>
-                  <p className="text-sm font-extrabold text-[#15803D] tabular-nums">
-                    <Award className="mr-0.5 inline h-3.5 w-3.5" aria-hidden="true" />
-                    {stats.offersCount}
-                  </p>
-                </div>
+
+                {/* Source Platform Mini Breakdown */}
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('applications', undefined, 'All')}
+                  className="w-full cursor-pointer rounded-xl border border-[#F5EFEA] bg-[#FFFCF9] p-2.5 text-left hover:border-[#FED7AA] transition-colors"
+                >
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-[#5B5570]">
+                    <span>By Source Platform</span>
+                    <span className="text-[#C2410C] tabular-nums">
+                      {stats.progressRatePct}% advancement
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex h-2 w-full overflow-hidden rounded-full bg-[#F1ECFA]">
+                    {JOB_PLATFORM_SOURCES.map((p) => {
+                      const cnt = stats.platformCounts[p.source] || 0;
+                      if (cnt === 0) return null;
+                      return (
+                        <div
+                          key={p.source}
+                          className={`h-full ${p.barBg}`}
+                          style={{ width: `${Math.round((cnt / stats.totalApps) * 100)}%` }}
+                          title={`${p.source}: ${cnt}`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10px] text-[#5B5570] tabular-nums">
+                    {JOB_PLATFORM_SOURCES.filter((p) => (stats.platformCounts[p.source] || 0) > 0).map(
+                      (p) => (
+                        <span key={p.source} className="inline-flex items-center gap-1">
+                          <span
+                            className="h-2 w-2 rounded-xs"
+                            style={{ backgroundColor: p.color }}
+                          />
+                          <span>
+                            {p.shortLabel}:{' '}
+                            <strong className="text-[#1E1B2E]">
+                              {stats.platformCounts[p.source]}
+                            </strong>
+                          </span>
+                        </span>
+                      )
+                    )}
+                  </div>
+                </button>
               </div>
             </>
           )}

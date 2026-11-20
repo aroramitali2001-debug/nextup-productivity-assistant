@@ -15,8 +15,10 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { GoogleSignInButton } from '../components/GoogleSignInButton';
+import { PlatformLogo } from '../components/PlatformLogo';
 import { WorkspaceConfirmModal } from '../components/WorkspaceConfirmModal';
 import { GoogleSignInMode, isEmbeddedIframe } from '../services/googleAuth';
+import { JOB_PLATFORM_ADAPTER_LIST } from '../services/jobPlatforms';
 import {
   addTaskToGoogleCalendar,
   CalendarEventItem,
@@ -28,7 +30,7 @@ import {
   SpreadsheetMetadata,
   syncApplicationsToSheet,
 } from '../services/workspaceApis';
-import { JobApplication, Task } from '../types/nextup';
+import { ApplicationStatus, JobApplication, JobPlatformId, Task } from '../types/nextup';
 import {
   formatDuration,
   formatFriendlyDateTime,
@@ -66,7 +68,11 @@ interface IntegrationsViewProps {
     estimatedMinutes: number;
     notes?: string;
   }) => void;
-  onImportApplications: (apps: Omit<JobApplication, 'id' | 'createdAt' | 'updatedAt'>[]) => void;
+  onImportApplications: (
+    apps: Omit<JobApplication, 'id' | 'createdAt' | 'updatedAt'>[],
+    sourceLabel?: string
+  ) => void;
+  onOpenPlatformConnect?: (platformId: JobPlatformId) => void;
   onSendMorningBriefingEmailNow: () => Promise<void>;
   onOpenReminderPreferences: () => void;
   onNotify: (msg: string) => void;
@@ -95,6 +101,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
   applications,
   onCreateTaskFromIntegration,
   onImportApplications,
+  onOpenPlatformConnect,
   onSendMorningBriefingEmailNow,
   onOpenReminderPreferences,
   onNotify,
@@ -122,6 +129,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
   const [gmailLoading, setGmailLoading] = useState(false);
   const [gmailError, setGmailError] = useState<string | null>(null);
   const [gmailScannedOnce, setGmailScannedOnce] = useState(false);
+  const [importedEmailIds, setImportedEmailIds] = useState<Set<string>>(new Set());
 
   // Confirmation modal state for mutating Workspace actions
   const [confirmState, setConfirmState] = useState<{
@@ -259,7 +267,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
       if (imported.length === 0) {
         setSheetsError('No application rows found (expected Company in column A and Role in column B).');
       } else {
-        onImportApplications(imported);
+        onImportApplications(imported, 'Google Sheets');
       }
     } catch (err) {
       setSheetsError(err instanceof Error ? err.message : 'Import failed.');
@@ -772,49 +780,106 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                 )}
 
                 {emailInsights.length > 0 && (
-                  <div className="max-h-60 overflow-y-auto space-y-2">
-                    {emailInsights.map((em) => (
-                      <div
-                        key={em.id}
-                        className="rounded-xl border border-[#E5DFF2] bg-[#FAF9FE] p-3 space-y-1.5"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-xs font-semibold text-[#1E1B2E] line-clamp-1">
-                            {em.subject}
-                          </p>
-                          <span className="shrink-0 text-[11px] font-semibold text-[#6D4AFF]">
-                            {em.detectedType}
-                          </span>
+                  <div className="max-h-64 overflow-y-auto space-y-2">
+                    {emailInsights.map((em) => {
+                      const alreadyImported = importedEmailIds.has(em.id);
+                      const mappedStatus: ApplicationStatus =
+                        em.detectedType === 'Interview'
+                          ? 'Interview'
+                          : em.detectedType === 'Assessment'
+                            ? 'Assessment'
+                            : em.detectedType === 'Offer'
+                              ? 'Offer'
+                              : em.detectedType === 'Rejection'
+                                ? 'Rejected'
+                                : 'Applied';
+                      return (
+                        <div
+                          key={em.id}
+                          className="rounded-xl border border-[#E5DFF2] bg-[#FAF9FE] p-3 space-y-1.5"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-semibold text-[#1E1B2E] line-clamp-1">
+                              {em.subject}
+                            </p>
+                            <span className="shrink-0 text-[11px] font-semibold text-[#6D4AFF]">
+                              {em.detectedType}
+                              {em.sourcePlatform ? ` · ${em.sourcePlatform}` : ''}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#5B5570] truncate">{em.from}</p>
+                          <p className="text-xs text-[#5B5570] line-clamp-2">{em.snippet}</p>
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <span className="text-[11px] font-medium text-[#4C2F96]">
+                              {em.suggestedAction}
+                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                disabled={alreadyImported}
+                                onClick={() => {
+                                  onImportApplications(
+                                    [
+                                      {
+                                        company:
+                                          em.suggestedCompany ||
+                                          em.sourcePlatform ||
+                                          'Recruiter Update',
+                                        role: em.suggestedRole || em.subject.slice(0, 60),
+                                        status: mappedStatus,
+                                        applicationDate: em.applicationDate || today,
+                                        sourcePlatform: em.sourcePlatform || 'Company Website',
+                                        applicationLink: em.detectedUrl,
+                                        notes: `From Gmail (${em.from}): ${em.subject}`,
+                                      },
+                                    ],
+                                    'Gmail recruitment scan'
+                                  );
+                                  setImportedEmailIds((prev) => new Set(prev).add(em.id));
+                                }}
+                                className={`inline-flex min-h-[34px] items-center gap-1 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+                                  alreadyImported
+                                    ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#15803D]'
+                                    : 'cursor-pointer border-[#DDD6FE] bg-[#F3EFFF] text-[#4C2F96] hover:bg-[#EDE9FE]'
+                                }`}
+                              >
+                                {alreadyImported ? (
+                                  <>
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    <span>Imported</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus className="h-3 w-3" />
+                                    <span>Import app</span>
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onCreateTaskFromIntegration({
+                                    title: `${em.detectedType}: ${em.suggestedCompany || em.subject.slice(0, 45)}`,
+                                    category: 'Career',
+                                    priority:
+                                      em.detectedType === 'Interview' || em.detectedType === 'Assessment'
+                                        ? 'Must Do'
+                                        : 'Should Do',
+                                    deadline: today,
+                                    estimatedMinutes: em.detectedType === 'Assessment' ? 60 : 30,
+                                    notes: `From Gmail (${em.from}): ${em.subject}`,
+                                  })
+                                }
+                                className="inline-flex min-h-[34px] cursor-pointer items-center gap-1 rounded-lg bg-white border border-[#DDD6FE] px-2.5 text-xs font-medium text-[#5B38EE] hover:bg-[#EDE9FE] shrink-0"
+                              >
+                                <Plus className="h-3 w-3" />
+                                <span>Create task</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-[#5B5570] truncate">{em.from}</p>
-                        <p className="text-xs text-[#5B5570] line-clamp-2">{em.snippet}</p>
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="text-[11px] font-medium text-[#4C2F96]">
-                            {em.suggestedAction}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onCreateTaskFromIntegration({
-                                title: `${em.detectedType}: ${em.suggestedCompany || em.subject.slice(0, 45)}`,
-                                category: 'Career',
-                                priority:
-                                  em.detectedType === 'Interview' || em.detectedType === 'Assessment'
-                                    ? 'Must Do'
-                                    : 'Should Do',
-                                deadline: today,
-                                estimatedMinutes: em.detectedType === 'Assessment' ? 60 : 30,
-                                notes: `From Gmail (${em.from}): ${em.subject}`,
-                              })
-                            }
-                            className="inline-flex min-h-[36px] items-center gap-1 rounded-lg bg-white border border-[#DDD6FE] px-2.5 text-xs font-medium text-[#5B38EE] hover:bg-[#EDE9FE] shrink-0"
-                          >
-                            <Plus className="h-3 w-3" />
-                            <span>Create task</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -874,6 +939,75 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
           </p>
         </article>
       </div>
+
+      {/* Job Search Platforms — Smart Application Sync Architecture */}
+      <section
+        aria-label="Job search platforms smart application sync"
+        className="rounded-2xl border border-[#DDD6FE] bg-white p-4 sm:p-5 space-y-4"
+      >
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-bold text-[#1E1B2E]">
+              💼 Job Search Platforms (Smart Application Sync)
+            </h2>
+            <p className="mt-0.5 text-xs text-[#5B5570]">
+              Direct candidate OAuth APIs are not publicly available for these platforms. Connect
+              via authorized Gmail application receipts or official CSV exports instead—NextUp never
+              requests platform passwords or scrapes accounts.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {JOB_PLATFORM_ADAPTER_LIST.map((adapter) => (
+            <article
+              key={adapter.id}
+              className={`flex flex-col justify-between rounded-2xl border p-4 space-y-3 ${adapter.accentBorder} ${adapter.accentBg}`}
+            >
+              <div className="space-y-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <PlatformLogo id={adapter.id} />
+                    <div>
+                      <h3 className="text-sm font-bold text-[#1E1B2E]">{adapter.name}</h3>
+                      <p className="text-[11px] font-semibold text-[#9A3412]">
+                        Direct API: {adapter.directApiStatus}
+                      </p>
+                    </div>
+                  </div>
+
+                  {onOpenPlatformConnect && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenPlatformConnect(adapter.id)}
+                      className="min-h-[36px] shrink-0 cursor-pointer rounded-xl bg-[#6D4AFF] px-3 text-xs font-semibold text-white hover:bg-[#5B38EE] transition-colors whitespace-nowrap"
+                    >
+                      Connect / Sync
+                    </button>
+                  )}
+                </div>
+
+                <p className="text-xs leading-relaxed text-[#4C4563]">{adapter.directApiSummary}</p>
+              </div>
+
+              <div className="border-t border-black/5 pt-2.5 space-y-1 text-[11px] text-[#5B5570]">
+                <p>
+                  <strong className="font-semibold text-[#1E1B2E]">Gmail Auto-Detection:</strong>{' '}
+                  {gmailReadConnected ? (
+                    <span className="font-semibold text-[#15803D]">Ready (read-only authorized)</span>
+                  ) : (
+                    <span>Sign in with Google above to scan {adapter.name} receipts</span>
+                  )}
+                </p>
+                <p>
+                  <strong className="font-semibold text-[#1E1B2E]">Official Export / CSV:</strong>{' '}
+                  <span className="font-semibold text-[#4C2F96]">Supported today</span>
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       {/* Explicit Confirmation Modal for Mutating Workspace API Calls */}
       {confirmState && (
