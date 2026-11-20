@@ -97,6 +97,8 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
       InterviewOrOA: interviewCount + assessmentCount,
       Interview: interviewCount,
       Assessment: assessmentCount,
+      Saved: applications.filter((a) => a.status === 'Saved').length,
+      Applied: applications.filter((a) => a.status === 'Applied').length,
       Offer: applications.filter((a) => a.status === 'Offer').length,
       Closed: applications.filter((a) => a.status === 'Rejected').length,
     };
@@ -136,11 +138,11 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
   return (
     <div className="space-y-4 sm:space-y-5">
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
-          <Briefcase className="h-5 w-5" aria-hidden="true" />
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
+          <Briefcase className="h-6 w-6" aria-hidden="true" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">Applications</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">💼 Applications</h1>
           <p className="mt-0.5 text-sm text-[#5B5570]">
             Track internships, interviews, recruiter contacts, and follow-up deadlines.
           </p>
@@ -157,10 +159,10 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium text-[#5B5570]">Active pipeline</span>
-            <Briefcase className="h-[18px] w-[18px] text-[#6D4AFF]" aria-hidden="true" />
+            <span className="text-xs font-bold text-[#4C2F96]">💼 Active pipeline</span>
+            <Briefcase className="h-5 w-5 text-[#6D4AFF]" aria-hidden="true" />
           </div>
-          <p className="mt-0.5 text-xl font-bold text-[#1E1B2E] tabular-nums">{counts.Active}</p>
+          <p className="mt-1 text-2xl font-extrabold text-[#1E1B2E] tabular-nums">{counts.Active}</p>
         </button>
 
         <button
@@ -175,10 +177,10 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium text-[#9A3412]">Interviews &amp; OAs</span>
-            <ClipboardCheck className="h-[18px] w-[18px] text-[#EA580C]" aria-hidden="true" />
+            <span className="text-xs font-bold text-[#9A3412]">🎤 Interviews &amp; OAs</span>
+            <ClipboardCheck className="h-5 w-5 text-[#EA580C]" aria-hidden="true" />
           </div>
-          <p className="mt-0.5 text-xl font-bold text-[#C2410C] tabular-nums">
+          <p className="mt-1 text-2xl font-extrabold text-[#C2410C] tabular-nums">
             {counts.InterviewOrOA}
           </p>
         </button>
@@ -196,19 +198,19 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
         >
           <div className="flex items-center justify-between gap-2">
             <span
-              className={`text-xs font-medium ${
+              className={`text-xs font-bold ${
                 counts.FollowUps > 0 ? 'text-[#4C2F96]' : 'text-[#5B5570]'
               }`}
             >
-              Follow-ups due
+              📤 Follow-ups due
             </span>
             <Send
-              className={`h-[18px] w-[18px] ${counts.FollowUps > 0 ? 'text-[#6D4AFF]' : 'text-[#7C7594]'}`}
+              className={`h-5 w-5 ${counts.FollowUps > 0 ? 'text-[#6D4AFF]' : 'text-[#7C7594]'}`}
               aria-hidden="true"
             />
           </div>
           <p
-            className={`mt-0.5 text-xl font-bold tabular-nums ${
+            className={`mt-1 text-2xl font-extrabold tabular-nums ${
               counts.FollowUps > 0 ? 'text-[#6D4AFF]' : 'text-[#1E1B2E]'
             }`}
           >
@@ -224,12 +226,76 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium text-[#15803D]">Offers</span>
-            <Award className="h-[18px] w-[18px] text-[#16A34A]" aria-hidden="true" />
+            <span className="text-xs font-bold text-[#15803D]">🏆 Offers</span>
+            <Award className="h-5 w-5 text-[#16A34A]" aria-hidden="true" />
           </div>
-          <p className="mt-0.5 text-xl font-bold text-[#16A34A] tabular-nums">{counts.Offer}</p>
+          <p className="mt-1 text-2xl font-extrabold text-[#16A34A] tabular-nums">{counts.Offer}</p>
         </button>
       </div>
+
+      {/* Visual Status Breakdown Progress Bar */}
+      {counts.All > 0 && (
+        <section
+          aria-label="Application status breakdown"
+          className="rounded-2xl border border-[#E5DFF2] bg-white p-3.5 sm:p-4 shadow-2xs space-y-2.5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums">
+            <span className="font-bold text-[#1E1B2E]">📈 Pipeline Breakdown ({counts.All} total)</span>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-medium text-[#5B5570]">
+              <span>🔖 Saved: <strong className="text-[#1E1B2E]">{counts.Saved}</strong></span>
+              <span>📤 Applied: <strong className="text-[#1D4ED8]">{counts.Applied}</strong></span>
+              <span>🧪 Assessment: <strong className="text-[#C2410C]">{counts.Assessment}</strong></span>
+              <span>🎤 Interview: <strong className="text-[#5B38EE]">{counts.Interview}</strong></span>
+              <span>🏆 Offer: <strong className="text-[#15803D]">{counts.Offer}</strong></span>
+              <span>📁 Closed: <strong className="text-[#64748B]">{counts.Closed}</strong></span>
+            </div>
+          </div>
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-[#F1ECFA]">
+            {counts.Offer > 0 && (
+              <div
+                className="h-full bg-[#16A34A]"
+                style={{ width: `${Math.round((counts.Offer / counts.All) * 100)}%` }}
+                title={`Offer: ${counts.Offer}`}
+              />
+            )}
+            {counts.Interview > 0 && (
+              <div
+                className="h-full bg-[#6D4AFF]"
+                style={{ width: `${Math.round((counts.Interview / counts.All) * 100)}%` }}
+                title={`Interview: ${counts.Interview}`}
+              />
+            )}
+            {counts.Assessment > 0 && (
+              <div
+                className="h-full bg-[#EA580C]"
+                style={{ width: `${Math.round((counts.Assessment / counts.All) * 100)}%` }}
+                title={`Assessment: ${counts.Assessment}`}
+              />
+            )}
+            {counts.Applied > 0 && (
+              <div
+                className="h-full bg-[#2563EB]"
+                style={{ width: `${Math.round((counts.Applied / counts.All) * 100)}%` }}
+                title={`Applied: ${counts.Applied}`}
+              />
+            )}
+            {counts.Saved > 0 && (
+              <div
+                className="h-full bg-[#A78BFA]"
+                style={{ width: `${Math.round((counts.Saved / counts.All) * 100)}%` }}
+                title={`Saved: ${counts.Saved}`}
+              />
+            )}
+            {counts.Closed > 0 && (
+              <div
+                className="h-full bg-[#94A3B8]"
+                style={{ width: `${Math.round((counts.Closed / counts.All) * 100)}%` }}
+                title={`Closed: ${counts.Closed}`}
+              />
+            )}
+          </div>
+        </section>
+      )}
 
       {counts.FollowUps > 0 && activeFilter !== 'FollowUps' && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#DDD6FE] bg-gradient-to-r from-[#F3EFFF] to-[#FAF8FF] px-4 py-3 text-sm text-[#4C2F96]">

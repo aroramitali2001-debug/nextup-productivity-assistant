@@ -220,11 +220,11 @@ export const UpcomingView: React.FC<UpcomingViewProps> = ({
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
-            <Calendar className="h-5 w-5" aria-hidden="true" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
+            <Calendar className="h-6 w-6" aria-hidden="true" />
           </span>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">Calendar</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">📅 Calendar</h1>
             <p className="mt-0.5 text-sm text-[#5B5570]">
               Upcoming events, deadlines, and chronological workload timeline.
             </p>
@@ -446,12 +446,23 @@ export const UpcomingView: React.FC<UpcomingViewProps> = ({
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {nextSevenDays.map((day) => {
               const isSelected = selectedDay === day.date;
+              const loadCount = day.taskCount + day.followUpCount;
+              const barPct =
+                loadCount === 0
+                  ? 0
+                  : Math.min(
+                      100,
+                      Math.max(
+                        20,
+                        Math.round((loadCount / Math.max(profile.dailyTaskWarningThreshold, 3)) * 100)
+                      )
+                    );
               return (
                 <button
                   key={day.date}
                   type="button"
                   onClick={() => setSelectedDay(isSelected ? null : day.date)}
-                  className={`flex min-h-[76px] flex-col items-center justify-between rounded-xl border p-2 transition-colors ${
+                  className={`flex min-h-[84px] flex-col items-center justify-between rounded-xl border p-2 transition-colors ${
                     isSelected
                       ? 'border-[#6D4AFF] bg-[#6D4AFF] text-white'
                       : day.isHeavy
@@ -463,19 +474,37 @@ export const UpcomingView: React.FC<UpcomingViewProps> = ({
                     {day.weekday}
                   </span>
                   <span className="text-base font-bold tabular-nums">{day.dayNumber}</span>
-                  <span
-                    className={`text-[11px] tabular-nums ${
-                      isSelected
-                        ? 'text-white/90'
-                        : day.isHeavy
-                          ? 'font-semibold text-[#C2410C]'
-                          : 'text-[#7C7594]'
-                    }`}
-                  >
-                    {day.taskCount + day.followUpCount === 0
-                      ? 'Free'
-                      : `${day.taskCount + day.followUpCount} due`}
-                  </span>
+                  <div className="w-full space-y-1">
+                    <div
+                      className={`h-1.5 w-full overflow-hidden rounded-full ${
+                        isSelected ? 'bg-white/25' : 'bg-[#EAE4F7]'
+                      }`}
+                    >
+                      {barPct > 0 && (
+                        <div
+                          className={`h-full rounded-full ${
+                            isSelected
+                              ? 'bg-white'
+                              : day.isHeavy
+                                ? 'bg-[#EA580C]'
+                                : 'bg-[#6D4AFF]'
+                          }`}
+                          style={{ width: `${barPct}%` }}
+                        />
+                      )}
+                    </div>
+                    <span
+                      className={`block text-[10px] tabular-nums ${
+                        isSelected
+                          ? 'text-white/95'
+                          : day.isHeavy
+                            ? 'font-semibold text-[#C2410C]'
+                            : 'text-[#7C7594]'
+                      }`}
+                    >
+                      {loadCount === 0 ? 'Free' : `${loadCount} due`}
+                    </span>
+                  </div>
                 </button>
               );
             })}

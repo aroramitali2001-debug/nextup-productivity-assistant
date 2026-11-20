@@ -6,14 +6,12 @@ import {
   Award,
   Briefcase,
   Calendar,
-  CalendarDays,
   CalendarRange,
   Check,
   CheckCircle2,
   ClipboardCheck,
   Clock,
   Flame,
-  ListTodo,
   Moon,
   Plus,
   Send,
@@ -23,6 +21,7 @@ import {
   SunMoon,
 } from 'lucide-react';
 import { CareerCenterSection } from '../components/CareerCenterSection';
+import { DashboardVisualAnalytics } from '../components/DashboardVisualAnalytics';
 import { MorningBriefingSection } from '../components/MorningBriefingSection';
 import { PWAInstallButton } from '../components/PWAInstallButton';
 import { isSampleTask } from '../services/storage';
@@ -192,11 +191,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       (a) => a.status === 'Interview' || a.status === 'Assessment'
     );
     const offers = applications.filter((a) => a.status === 'Offer');
+    const applied = applications.filter((a) => a.status === 'Applied');
+    const rejected = applications.filter((a) => a.status === 'Rejected');
     return {
       total: applications.length,
       active: active.length,
       interviewsOrOA: interviewsOrOA.length,
       offers: offers.length,
+      applied: applied.length,
+      rejected: rejected.length,
     };
   }, [applications]);
 
@@ -249,8 +252,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </h1>
           <p className="mt-0.5 text-sm text-[#5B5570]">
             {dueTodayTasks.length === 0 && overdueTasks.length === 0
-              ? 'Your day looks clear — plan ahead or explore career opportunities below.'
-              : 'Your daily command center — stay on top of priorities, deadlines, and your career search.'}
+              ? '✨ Your day looks clear — review your progress charts or explore career opportunities below.'
+              : '📊 Your visual daily command center — track progress, priorities, deadlines, and job search momentum at a glance.'}
           </p>
         </div>
 
@@ -262,7 +265,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={onOpenReplan}
             className="flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-xl border border-[#C9B9F9] bg-gradient-to-r from-[#EDE9FE] to-[#F3EFFF] px-3.5 py-2 text-xs font-semibold text-[#4C2F96] hover:from-[#DDD6FE] hover:to-[#EDE9FE] transition-colors whitespace-nowrap"
           >
-            <CalendarRange className="h-3.5 w-3.5 text-[#6D4AFF]" />
+            <CalendarRange className="h-4 w-4 text-[#6D4AFF]" />
             <span>Replan My Day</span>
           </button>
 
@@ -271,7 +274,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={onOpenMiddayCheckIn}
             className="flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-xl border border-[#DFD7F2] bg-white px-3 py-2 text-xs font-medium text-[#1E1B2E] hover:bg-[#F5F1FF] transition-colors whitespace-nowrap"
           >
-            <SunMoon className="h-3.5 w-3.5 text-[#0D9488]" />
+            <SunMoon className="h-4 w-4 text-[#0D9488]" />
             <span>Check-in</span>
           </button>
 
@@ -281,7 +284,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             aria-label="Personalise NextUp"
             className="flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-xl border border-[#DFD7F2] bg-white px-3 py-2 text-xs font-medium text-[#5B5570] hover:text-[#1E1B2E] hover:bg-[#F5F1FF] transition-colors whitespace-nowrap"
           >
-            <SlidersHorizontal className="h-3.5 w-3.5 text-[#6D4AFF]" />
+            <SlidersHorizontal className="h-4 w-4 text-[#6D4AFF]" />
             <span>Personalise</span>
           </button>
         </div>
@@ -291,12 +294,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {(overdueTasks.length > 0 || overloadedDays.length > 0) && (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {overdueTasks.length > 0 && (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#FECACA] bg-gradient-to-r from-[#FEF2F2] to-[#FFF5F5] px-4 py-2.5">
-              <div className="flex items-start gap-2.5 min-w-0">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#DC2626]" />
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#FECACA] bg-gradient-to-r from-[#FEF2F2] to-[#FFF5F5] px-4 py-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#FECACA] bg-white text-[#DC2626] shadow-2xs">
+                  <AlertCircle className="h-5 w-5" />
+                </span>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-[#991B1B]">
-                    Past deadline — action needed
+                  <p className="text-xs font-bold text-[#991B1B]">
+                    ⏳ {overdueTasks.length} overdue {overdueTasks.length === 1 ? 'task' : 'tasks'} — action needed
                   </p>
                   <p className="mt-0.5 text-xs text-[#B91C1C] truncate">
                     {overdueTasks[0].title}
@@ -314,12 +319,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
 
           {overloadedDays.length > 0 && (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#FED7AA] bg-gradient-to-r from-[#FFF7ED] to-[#FFFBF5] px-4 py-2.5">
-              <div className="flex items-start gap-2.5 min-w-0">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#EA580C]" />
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#FED7AA] bg-gradient-to-r from-[#FFF7ED] to-[#FFFBF5] px-4 py-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#FED7AA] bg-white text-[#EA580C] shadow-2xs">
+                  <AlertTriangle className="h-5 w-5" />
+                </span>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-[#9A3412]">
-                    Heavy day ahead: {overloadedDays[0].label}
+                  <p className="text-xs font-bold text-[#9A3412]">
+                    ⚠️ Heavy day ahead: {overloadedDays[0].label}
                   </p>
                   <p className="mt-0.5 text-xs text-[#C2410C] tabular-nums">
                     {overloadedDays[0].taskCount} tasks · {formatDuration(overloadedDays[0].totalMinutes)} scheduled
@@ -338,76 +345,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </section>
       )}
 
-      {/* Full-Width 4-Tile Task Status Strip */}
-      <section aria-label="Task summary" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <button
-          type="button"
-          onClick={() => onNavigateTab('tasks', 'today')}
-          className="group cursor-pointer rounded-2xl border border-[#D4C8F2] bg-gradient-to-br from-[#F7F4FF] to-[#EDE9FE]/80 px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#6D4AFF] hover:shadow-xs"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-[#4C2F96]">Due today</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#6D4AFF] shadow-2xs border border-[#E5DFF2]">
-              <ListTodo className="h-[18px] w-[18px]" aria-hidden="true" />
-            </span>
-          </div>
-          <p className="mt-1 text-2xl font-bold text-[#6D4AFF] tabular-nums">
-            {dueTodayTasks.length}
-          </p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onNavigateTab('tasks', 'overdue')}
-          className={`group cursor-pointer rounded-2xl border px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-xs ${
-            overdueTasks.length > 0
-              ? 'border-[#FECACA] bg-gradient-to-br from-[#FEF2F2] to-[#FEE2E2]/70 hover:border-[#DC2626]'
-              : 'border-[#F3DCDC] bg-gradient-to-br from-[#FFF9F9] to-[#FEF2F2]/60 hover:border-[#FCA5A5]'
-          }`}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-[#B91C1C]">Overdue</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#DC2626] shadow-2xs border border-[#FECACA]">
-              <AlertCircle className="h-[18px] w-[18px]" aria-hidden="true" />
-            </span>
-          </div>
-          <p className="mt-1 text-2xl font-bold text-[#DC2626] tabular-nums">
-            {overdueTasks.length}
-          </p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onNavigateTab('tasks', 'upcoming')}
-          className="group cursor-pointer rounded-2xl border border-[#BFDBFE] bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE]/70 px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#2563EB] hover:shadow-xs"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-[#1D4ED8]">Upcoming</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#2563EB] shadow-2xs border border-[#BFDBFE]">
-              <CalendarDays className="h-[18px] w-[18px]" aria-hidden="true" />
-            </span>
-          </div>
-          <p className="mt-1 text-2xl font-bold text-[#2563EB] tabular-nums">
-            {upcomingTasks.length}
-          </p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onNavigateTab('tasks', 'completed')}
-          className="group cursor-pointer rounded-2xl border border-[#BBF7D0] bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7]/70 px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#16A34A] hover:shadow-xs"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-[#15803D]">Completed</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#16A34A] shadow-2xs border border-[#BBF7D0]">
-              <CheckCircle2 className="h-[18px] w-[18px]" aria-hidden="true" />
-            </span>
-          </div>
-          <p className="mt-1 text-2xl font-bold text-[#16A34A] tabular-nums">
-            {completedTasks.length}
-          </p>
-        </button>
-      </section>
+      {/* Visual KPI Strip, 8-Metric Snapshot & Interactive Charts */}
+      <DashboardVisualAnalytics
+        profile={profile}
+        tasks={tasks}
+        applications={applications}
+        followUpsDueToday={followUpsDueToday}
+        followUpsOverdue={followUpsOverdue}
+        workloadMetrics={workloadMetrics}
+        onNavigateTab={onNavigateTab}
+      />
 
       {/* Main 2-Column Overview Bento */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
@@ -443,12 +390,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <section className="overflow-hidden rounded-2xl border border-[#FED7AA] bg-white shadow-2xs">
             <div className="flex items-center justify-between gap-2 border-b border-[#FDE8D3] bg-gradient-to-r from-[#FFF7ED] to-[#FFEDD5]/55 px-4 py-3 sm:px-5">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#EA580C] shadow-2xs border border-[#FED7AA]">
-                  <Flame className="h-[18px] w-[18px]" aria-hidden="true" />
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#EA580C] shadow-2xs border border-[#FED7AA]">
+                  <Flame className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <h2 className="text-sm font-bold text-[#1E1B2E] sm:text-base">
-                  🔥 Today&apos;s Focus
-                </h2>
+                <div>
+                  <h2 className="text-sm font-bold text-[#1E1B2E] sm:text-base">
+                    🔥 Today&apos;s Focus
+                  </h2>
+                  <p className="text-[11px] text-[#9A3412] tabular-nums">
+                    Top {focusTasks.length} priority {focusTasks.length === 1 ? 'item' : 'items'}
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -479,7 +431,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   disabled={!quickTaskText.trim()}
                   className="inline-flex min-h-[38px] shrink-0 cursor-pointer items-center gap-1 rounded-xl bg-[#6D4AFF] px-3 text-xs font-semibold text-white hover:bg-[#5B38EE] disabled:cursor-not-allowed disabled:opacity-45 transition-colors whitespace-nowrap"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="h-4 w-4" />
                   <span>Add</span>
                 </button>
               </div>
@@ -491,7 +443,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </span>
                   <span aria-hidden="true" className="text-[#C9BFE3]">·</span>
                   <span className={`inline-flex items-center gap-1 font-medium ${CATEGORY_COLOR[quickTaskPreview.category].text}`}>
-                    <CategoryIcon category={quickTaskPreview.category} className="h-3 w-3 shrink-0" />
+                    <CategoryIcon category={quickTaskPreview.category} className="h-3.5 w-3.5 shrink-0" />
                     <span>{quickTaskPreview.category}</span>
                   </span>
                   <span aria-hidden="true" className="text-[#C9BFE3]">·</span>
@@ -512,23 +464,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {focusTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center px-6 py-6 text-center">
-                <CheckCircle2 className="h-7 w-7 text-[#16A34A]" />
-                <p className="mt-2 text-sm font-medium text-[#1E1B2E]">No pending focus tasks</p>
+                <CheckCircle2 className="h-9 w-9 text-[#16A34A]" />
+                <p className="mt-2 text-sm font-semibold text-[#1E1B2E]">No pending focus tasks</p>
                 <p className="mt-0.5 text-xs text-[#5B5570]">
                   Add a task above or review upcoming deadlines in My Tasks.
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-[#F5EFEA]">
-                {focusTasks.map((task) => {
+                {focusTasks.map((task, idx) => {
                   const catStyle = CATEGORY_COLOR[task.category];
                   const prioStyle = PRIORITY_COLOR[task.priority];
                   const overdue = isTaskOverdue(task);
+                  const prioEmoji =
+                    task.priority === 'Must Do' ? '🔥' : task.priority === 'Should Do' ? '⚡' : '🌿';
 
                   return (
                     <div
                       key={task.id}
-                      className={`flex items-center gap-3 border-l-[3px] px-4 py-2.5 sm:px-5 transition-colors ${
+                      className={`flex items-center gap-3 border-l-[3px] px-4 py-3 sm:px-5 transition-colors ${
                         task.completed
                           ? 'border-l-[#16A34A]/65 bg-[#F0FDF4]/60 opacity-75'
                           : overdue
@@ -563,43 +517,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </span>
                       </button>
 
+                      <span
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${catStyle.softBg} ${catStyle.border} ${catStyle.text}`}
+                        title={task.category}
+                      >
+                        <TaskContextIcon task={task} className="h-4 w-4 shrink-0" />
+                      </span>
+
                       <div className="min-w-0 flex-1">
-                        <button
-                          type="button"
-                          onClick={() => onEditTask(task)}
-                          className={`block w-full text-left text-sm font-semibold truncate cursor-pointer transition-colors ${
-                            task.completed
-                              ? 'line-through text-[#7C7594]'
-                              : 'text-[#1E1B2E] hover:text-[#6D4AFF]'
-                          }`}
-                        >
-                          {task.title}
-                        </button>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs tabular-nums">
-                          <span className={`inline-flex items-center gap-1.5 font-medium ${catStyle.text}`}>
-                            <span
-                              className={`inline-flex h-6 w-6 items-center justify-center rounded-lg border ${catStyle.softBg} ${catStyle.border}`}
-                            >
-                              <TaskContextIcon task={task} className="h-3.5 w-3.5 shrink-0" />
-                            </span>
-                            <span>{task.category}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#F3EFFF] text-[11px] font-bold text-[#5B38EE] tabular-nums">
+                            {idx + 1}
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => onEditTask(task)}
+                            className={`block min-w-0 flex-1 text-left text-sm font-semibold truncate cursor-pointer transition-colors ${
+                              task.completed
+                                ? 'line-through text-[#7C7594]'
+                                : 'text-[#1E1B2E] hover:text-[#6D4AFF]'
+                            }`}
+                          >
+                            {task.title}
+                          </button>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs tabular-nums">
+                          <span className={`font-medium ${catStyle.text}`}>{task.category}</span>
                           <span aria-hidden="true" className="text-[#C9BFE3]">·</span>
                           <span
                             className={`font-semibold ${
                               task.completed ? 'text-[#15803D]' : prioStyle.text
                             }`}
                           >
-                            {task.completed ? 'Completed' : task.priority}
+                            {task.completed ? '🟢 Completed' : `${prioEmoji} ${task.priority}`}
                           </span>
                           <span aria-hidden="true" className="text-[#C9BFE3]">·</span>
                           <span className={overdue ? 'font-semibold text-[#DC2626]' : 'text-[#5B5570]'}>
                             {overdue
-                              ? `Overdue (${formatFriendlyDateTime(task.deadline, task.deadlineTime, today)})`
+                              ? `⏳ Overdue (${formatFriendlyDateTime(task.deadline, task.deadlineTime, today)})`
                               : formatFriendlyDateTime(task.deadline, task.deadlineTime, today)}
                           </span>
                           <span aria-hidden="true" className="text-[#C9BFE3]">·</span>
-                          <span className="text-[#5B5570]">{formatDuration(task.estimatedMinutes)}</span>
+                          <span className="inline-flex items-center gap-1 text-[#5B5570]">
+                            <Clock className="h-3.5 w-3.5 text-[#7C7594]" aria-hidden="true" />
+                            {formatDuration(task.estimatedMinutes)}
+                          </span>
                           {isSampleTask(task) && (
                             <>
                               <span aria-hidden="true" className="text-[#C9BFE3]">·</span>
@@ -622,10 +584,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <section className="overflow-hidden rounded-2xl border border-[#BFDBFE] bg-[#F2F7FF] shadow-2xs">
             <div className="flex items-center justify-between gap-2 border-b border-[#DBEAFE] bg-gradient-to-r from-[#E8F1FF] to-[#EFF6FF] px-4 py-3.5 sm:px-5">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#2563EB] shadow-2xs border border-[#BFDBFE]">
-                  <Calendar className="h-[18px] w-[18px]" aria-hidden="true" />
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#2563EB] shadow-2xs border border-[#BFDBFE]">
+                  <Calendar className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <h2 className="text-sm font-bold text-[#1E1B2E]">📅 Upcoming &amp; Events</h2>
+                <div>
+                  <h2 className="text-sm font-bold text-[#1E1B2E]">📅 Upcoming &amp; Events</h2>
+                  <p className="text-[11px] text-[#1D4ED8] tabular-nums">
+                    {upcomingTasks.length} upcoming {upcomingTasks.length === 1 ? 'deadline' : 'deadlines'}
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -642,7 +609,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 calendarEvents.length > 0 && (
                   <div className="rounded-xl border border-[#BFDBFE] bg-white p-3 space-y-1.5">
                     <p className="text-[11px] font-semibold text-[#1D4ED8]">
-                      Today&apos;s Google Calendar ({calendarEvents.length})
+                      Google Calendar Today ({calendarEvents.length})
                     </p>
                     {calendarEvents.slice(0, 2).map((ev) => (
                       <div
@@ -650,10 +617,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         className="flex items-center justify-between gap-2 text-xs text-[#1E1B2E] tabular-nums"
                       >
                         <span className="inline-flex min-w-0 items-center gap-1.5 font-medium">
-                          <Calendar className="h-3.5 w-3.5 shrink-0 text-[#2563EB]" aria-hidden="true" />
+                          <Calendar className="h-4 w-4 shrink-0 text-[#2563EB]" aria-hidden="true" />
                           <span className="truncate">{ev.summary}</span>
                         </span>
-                        <span className="shrink-0 text-[#2563EB]">
+                        <span className="shrink-0 font-semibold text-[#2563EB]">
                           {ev.isAllDay ? 'All day' : formatDuration(ev.durationMinutes)}
                         </span>
                       </div>
@@ -666,7 +633,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   onClick={() => onNavigateTab('integrations')}
                   className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-dashed border-[#93C5FD] bg-white/80 px-3 py-2 text-left text-xs text-[#1D4ED8] hover:bg-white transition-colors"
                 >
-                  <span className="font-medium">Connect Google Calendar for live schedule sync</span>
+                  <span className="font-medium">🔗 Connect Google Calendar for live sync</span>
                   <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                 </button>
               )}
@@ -686,21 +653,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         onClick={() => onEditTask(task)}
                         className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#DBEAFE] bg-white px-3.5 py-2.5 text-left hover:border-[#60A5FA] transition-colors"
                       >
-                        <div className="min-w-0">
-                          <p className="text-xs font-semibold text-[#1E1B2E] truncate">
-                            {task.title}
-                          </p>
-                          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-[#5B5570] tabular-nums">
-                            <span className={`inline-flex items-center gap-1 font-medium ${cat.text}`}>
-                              <TaskContextIcon task={task} className="h-3 w-3 shrink-0" />
-                              <span>{task.category}</span>
-                            </span>
-                            <span aria-hidden="true" className="text-[#C9BFE3]">·</span>
-                            <span>{formatFriendlyDateTime(task.deadline, task.deadlineTime, today)}</span>
-                          </p>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${cat.softBg} ${cat.border} ${cat.text}`}
+                          >
+                            <TaskContextIcon task={task} className="h-4 w-4 shrink-0" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-[#1E1B2E] truncate">
+                              {task.title}
+                            </p>
+                            <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-[#5B5570] tabular-nums">
+                              <span className={`font-medium ${cat.text}`}>{task.category}</span>
+                              <span aria-hidden="true" className="text-[#C9BFE3]">·</span>
+                              <span>{formatFriendlyDateTime(task.deadline, task.deadlineTime, today)}</span>
+                            </p>
+                          </div>
                         </div>
-                        <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[#1D4ED8] tabular-nums">
-                          <Clock className="h-3 w-3" />
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#EFF6FF] px-2 py-1 text-[11px] font-semibold text-[#1D4ED8] tabular-nums">
+                          <Clock className="h-3.5 w-3.5" />
                           {formatDuration(task.estimatedMinutes)}
                         </span>
                       </button>
@@ -715,10 +686,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <section className="overflow-hidden rounded-2xl border border-[#D4C8F2] bg-[#F7F4FF] shadow-2xs">
             <div className="flex items-center justify-between gap-2 border-b border-[#E4DCF7] bg-gradient-to-r from-[#EFEAFF] to-[#F5F2FF] px-4 py-3.5 sm:px-5">
               <div className="flex items-center gap-2.5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#6D4AFF] shadow-2xs border border-[#DDD6FE]">
-                  <Briefcase className="h-[18px] w-[18px]" aria-hidden="true" />
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#6D4AFF] shadow-2xs border border-[#DDD6FE]">
+                  <Briefcase className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <h2 className="text-sm font-bold text-[#1E1B2E]">💼 Applications</h2>
+                <div>
+                  <h2 className="text-sm font-bold text-[#1E1B2E]">💼 Applications</h2>
+                  <p className="text-[11px] text-[#5B38EE] tabular-nums">
+                    {appStats.total} tracked · {allFollowUpsDue.length} follow-up{allFollowUpsDue.length === 1 ? '' : 's'} due
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -746,6 +722,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {/* Visual Pipeline Composition Progress Bar */}
+                  <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-[#E8E0F7]">
+                    {appStats.offers > 0 && (
+                      <div
+                        className="h-full bg-[#16A34A]"
+                        style={{ width: `${Math.round((appStats.offers / appStats.total) * 100)}%` }}
+                        title={`Offers: ${appStats.offers}`}
+                      />
+                    )}
+                    {appStats.interviewsOrOA > 0 && (
+                      <div
+                        className="h-full bg-[#EA580C]"
+                        style={{
+                          width: `${Math.round((appStats.interviewsOrOA / appStats.total) * 100)}%`,
+                        }}
+                        title={`Interview / Assessment: ${appStats.interviewsOrOA}`}
+                      />
+                    )}
+                    {Math.max(0, appStats.active - appStats.interviewsOrOA) > 0 && (
+                      <div
+                        className="h-full bg-[#6D4AFF]"
+                        style={{
+                          width: `${Math.round(
+                            (Math.max(0, appStats.active - appStats.interviewsOrOA) /
+                              appStats.total) *
+                              100
+                          )}%`,
+                        }}
+                        title="Saved / Applied"
+                      />
+                    )}
+                    {appStats.rejected > 0 && (
+                      <div
+                        className="h-full bg-[#94A3B8]"
+                        style={{ width: `${Math.round((appStats.rejected / appStats.total) * 100)}%` }}
+                        title={`Closed: ${appStats.rejected}`}
+                      />
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
@@ -754,12 +770,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       className="group cursor-pointer rounded-xl border border-[#DDD6FE] bg-gradient-to-br from-white to-[#F5F2FF] px-2.5 py-2.5 text-center transition-all hover:-translate-y-0.5 hover:border-[#6D4AFF] hover:shadow-xs"
                     >
                       <div className="flex items-center justify-center gap-1 text-[#5B38EE]">
-                        <Briefcase className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                        <span className="text-[11px] font-medium text-[#5B5570] group-hover:text-[#4C2F96]">
+                        <Briefcase className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span className="text-[11px] font-semibold text-[#5B5570] group-hover:text-[#4C2F96]">
                           Active
                         </span>
                       </div>
-                      <p className="mt-0.5 text-lg font-bold text-[#1E1B2E] tabular-nums">
+                      <p className="mt-0.5 text-xl font-extrabold text-[#1E1B2E] tabular-nums">
                         {appStats.active}
                       </p>
                     </button>
@@ -771,12 +787,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       className="group cursor-pointer rounded-xl border border-[#FED7AA] bg-gradient-to-br from-[#FFF7ED] to-[#FFEDD5]/70 px-2.5 py-2.5 text-center transition-all hover:-translate-y-0.5 hover:border-[#EA580C] hover:shadow-xs"
                     >
                       <div className="flex items-center justify-center gap-1 text-[#EA580C]">
-                        <ClipboardCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                        <span className="text-[11px] font-medium text-[#9A3412]">
+                        <ClipboardCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span className="text-[11px] font-semibold text-[#9A3412]">
                           Interview/OA
                         </span>
                       </div>
-                      <p className="mt-0.5 text-lg font-bold text-[#C2410C] tabular-nums">
+                      <p className="mt-0.5 text-xl font-extrabold text-[#C2410C] tabular-nums">
                         {appStats.interviewsOrOA}
                       </p>
                     </button>
@@ -788,10 +804,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       className="group cursor-pointer rounded-xl border border-[#BBF7D0] bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7]/70 px-2.5 py-2.5 text-center transition-all hover:-translate-y-0.5 hover:border-[#16A34A] hover:shadow-xs"
                     >
                       <div className="flex items-center justify-center gap-1 text-[#16A34A]">
-                        <Award className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                        <span className="text-[11px] font-medium text-[#15803D]">Offers</span>
+                        <Award className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span className="text-[11px] font-semibold text-[#15803D]">🏆 Offers</span>
                       </div>
-                      <p className="mt-0.5 text-lg font-bold text-[#15803D] tabular-nums">
+                      <p className="mt-0.5 text-xl font-extrabold text-[#15803D] tabular-nums">
                         {appStats.offers}
                       </p>
                     </button>

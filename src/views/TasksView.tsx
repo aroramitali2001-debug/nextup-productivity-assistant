@@ -135,11 +135,19 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
   const counts = useMemo(() => {
     const now = new Date();
+    const completed = tasks.filter((t) => t.completed).length;
+    const total = tasks.length;
+    const remaining = total - completed;
+    const mustDoOpen = tasks.filter((t) => !t.completed && t.priority === 'Must Do').length;
     return {
       today: tasks.filter((t) => !t.completed && t.deadline === today && !isTaskOverdue(t, now)).length,
       upcoming: tasks.filter((t) => !t.completed && t.deadline > today).length,
       overdue: tasks.filter((t) => isTaskOverdue(t, now)).length,
-      completed: tasks.filter((t) => t.completed).length,
+      completed,
+      total,
+      remaining,
+      mustDoOpen,
+      completionPct: total > 0 ? Math.round((completed / total) * 100) : 0,
     };
   }, [tasks, today]);
 
@@ -218,16 +226,43 @@ export const TasksView: React.FC<TasksViewProps> = ({
     <div className="space-y-5">
       {/* Page Header */}
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
-          <ListTodo className="h-5 w-5" aria-hidden="true" />
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
+          <ListTodo className="h-6 w-6" aria-hidden="true" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">My Tasks</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">✅ My Tasks</h1>
           <p className="mt-0.5 text-sm text-[#5B5570]">
             Add, organise, prioritise, and track every deadline in one workspace.
           </p>
         </div>
       </div>
+
+      {/* Visual Task Completion & Priority Progress Bar */}
+      <section
+        aria-label="Task progress overview"
+        className="rounded-2xl border border-[#DFD7F2] bg-white p-3.5 sm:p-4 shadow-2xs space-y-2.5"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-semibold">
+            <span className="text-[#1E1B2E]">📊 Overall Progress:</span>
+            <span className="text-[#15803D]">🟢 {counts.completed} done</span>
+            <span className="text-[#5B38EE]">⚡ {counts.remaining} remaining</span>
+            <span className={counts.overdue > 0 ? 'text-[#DC2626]' : 'text-[#5B5570]'}>
+              ⏳ {counts.overdue} overdue
+            </span>
+            <span className="text-[#C2410C]">🔥 {counts.mustDoOpen} Must Do</span>
+          </div>
+          <span className="text-sm font-extrabold text-[#16A34A]">
+            {counts.completionPct}% complete
+          </span>
+        </div>
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#EFEAF9]">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#6D4AFF] via-[#22C55E] to-[#16A34A] transition-all duration-300"
+            style={{ width: `${counts.completionPct}%` }}
+          />
+        </div>
+      </section>
 
       {/* Centralized Quick Capture */}
       <section className="rounded-2xl border border-[#DDD6FE] bg-gradient-to-r from-[#FAF8FF] to-[#F3EFFF]/65 p-3.5 sm:p-4 shadow-2xs">
@@ -366,7 +401,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
               }`}
             >
               <TabIcon
-                className={`h-3.5 w-3.5 shrink-0 hidden sm:inline ${
+                className={`h-4 w-4 shrink-0 hidden sm:inline ${
                   isActive ? tab.iconColor : 'text-[#7C7594]'
                 }`}
                 aria-hidden="true"

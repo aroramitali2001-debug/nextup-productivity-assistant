@@ -313,11 +313,11 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
   return (
     <div className="space-y-4 sm:space-y-5">
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
-          <Plug className="h-5 w-5" aria-hidden="true" />
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
+          <Plug className="h-6 w-6" aria-hidden="true" />
         </span>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">Integrations</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">🔌 Integrations</h1>
           <p className="mt-0.5 text-sm text-[#5B5570]">
             Connect Google Calendar, Google Sheets, and Gmail securely via Google&apos;s official sign-in screen. NextUp never asks for your password and only mutates data when you confirm.
           </p>
@@ -432,11 +432,11 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
           <div className="space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EFF6FF] text-[#2563EB]">
-                  <Calendar className="h-5 w-5" />
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB]">
+                  <Calendar className="h-6 w-6" />
                 </span>
                 <div>
-                  <h2 className="text-base font-semibold text-[#1E1B2E]">Google Calendar</h2>
+                  <h2 className="text-base font-semibold text-[#1E1B2E]">📅 Google Calendar</h2>
                   <p className="text-xs text-[#5B5570]">
                     View daily schedule, compare available time, and add approved tasks.
                   </p>
@@ -546,11 +546,11 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
           <div className="space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F0FDF4] text-[#16A34A]">
-                  <FileSpreadsheet className="h-5 w-5" />
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] text-[#16A34A]">
+                  <FileSpreadsheet className="h-6 w-6" />
                 </span>
                 <div>
-                  <h2 className="text-base font-semibold text-[#1E1B2E]">Google Sheets</h2>
+                  <h2 className="text-base font-semibold text-[#1E1B2E]">📊 Google Sheets</h2>
                   <p className="text-xs text-[#5B5570]">
                     Synchronise internships, statuses, and follow-ups with a spreadsheet.
                   </p>
@@ -677,11 +677,11 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
           <div className="space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FEF2F2] text-[#DC2626]">
-                  <Mail className="h-5 w-5" />
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#FECACA] bg-[#FEF2F2] text-[#DC2626]">
+                  <Mail className="h-6 w-6" />
                 </span>
                 <div>
-                  <h2 className="text-base font-semibold text-[#1E1B2E]">Gmail & Email Reminders</h2>
+                  <h2 className="text-base font-semibold text-[#1E1B2E]">✉️ Gmail & Email Reminders</h2>
                   <p className="text-xs text-[#5B5570]">
                     Scan recruitment emails and send task deadline reminders to your verified email.
                   </p>
@@ -838,11 +838,11 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
           <div>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F0FDFA] text-[#0D9488]">
-                  <MessageSquare className="h-5 w-5" />
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#99F6E4] bg-[#F0FDFA] text-[#0D9488]">
+                  <MessageSquare className="h-6 w-6" />
                 </span>
                 <div>
-                  <h2 className="text-base font-semibold text-[#1E1B2E]">WhatsApp</h2>
+                  <h2 className="text-base font-semibold text-[#1E1B2E]">💬 WhatsApp</h2>
                   <p className="text-xs text-[#5B5570]">
                     Gentle daily briefings and deadline nudges on your phone.
                   </p>

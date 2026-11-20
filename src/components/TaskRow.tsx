@@ -98,9 +98,9 @@ export const TaskRow: React.FC<TaskRowProps> = ({
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] tabular-nums">
             <span className={`inline-flex items-center gap-1.5 font-medium ${catStyle.text}`}>
               <span
-                className={`inline-flex h-6 w-6 items-center justify-center rounded-lg border ${catStyle.softBg} ${catStyle.border}`}
+                className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border ${catStyle.softBg} ${catStyle.border}`}
               >
-                <TaskContextIcon task={task} className="h-3.5 w-3.5 shrink-0" />
+                <TaskContextIcon task={task} className="h-4 w-4 shrink-0" />
               </span>
               <span>{task.category}</span>
             </span>

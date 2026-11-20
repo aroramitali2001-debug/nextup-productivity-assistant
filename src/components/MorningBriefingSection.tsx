@@ -252,27 +252,27 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
           <>
             {/* Evening Wrap-Up Snapshot */}
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              <div className="rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-2">
-                <span className="text-[11px] font-semibold text-[#15803D]">Completed today</span>
-                <p className="mt-0.5 text-lg font-bold text-[#16A34A] tabular-nums">
+              <div className="rounded-xl border border-[#BBF7D0] bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7]/70 px-3 py-2.5">
+                <span className="text-[11px] font-bold text-[#15803D]">🟢 Done today</span>
+                <p className="mt-0.5 text-xl font-extrabold text-[#16A34A] tabular-nums">
                   {eveningData.completedToday.length}
                 </p>
               </div>
-              <div className="rounded-xl border border-[#FED7AA] bg-[#FFF7ED] px-3 py-2">
-                <span className="text-[11px] font-semibold text-[#9A3412]">Still pending</span>
-                <p className="mt-0.5 text-lg font-bold text-[#C2410C] tabular-nums">
+              <div className="rounded-xl border border-[#FED7AA] bg-gradient-to-br from-[#FFF7ED] to-[#FFEDD5]/70 px-3 py-2.5">
+                <span className="text-[11px] font-bold text-[#9A3412]">⏳ Pending</span>
+                <p className="mt-0.5 text-xl font-extrabold text-[#C2410C] tabular-nums">
                   {eveningData.pendingTodayOrOverdue.length}
                 </p>
               </div>
-              <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2">
-                <span className="text-[11px] font-semibold text-[#1D4ED8]">Upcoming</span>
-                <p className="mt-0.5 text-lg font-bold text-[#2563EB] tabular-nums">
+              <div className="rounded-xl border border-[#BFDBFE] bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE]/70 px-3 py-2.5">
+                <span className="text-[11px] font-bold text-[#1D4ED8]">📅 Upcoming</span>
+                <p className="mt-0.5 text-xl font-extrabold text-[#2563EB] tabular-nums">
                   {eveningData.upcoming.length}
                 </p>
               </div>
-              <div className="rounded-xl border border-[#DDD6FE] bg-[#F5F1FF] px-3 py-2">
-                <span className="text-[11px] font-semibold text-[#4C2F96]">Follow-ups</span>
-                <p className="mt-0.5 text-lg font-bold text-[#6D4AFF] tabular-nums">
+              <div className="rounded-xl border border-[#DDD6FE] bg-gradient-to-br from-[#F5F1FF] to-[#EDE9FE]/70 px-3 py-2.5">
+                <span className="text-[11px] font-bold text-[#4C2F96]">📤 Follow-ups</span>
+                <p className="mt-0.5 text-xl font-extrabold text-[#6D4AFF] tabular-nums">
                   {eveningData.followUpsDueOrTomorrow.length}
                 </p>
               </div>
@@ -280,9 +280,9 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
 
             {eveningData.completedToday.length > 0 && (
               <div className="rounded-xl border border-[#BBF7D0] bg-[#F0FDF4]/70 px-3.5 py-2.5 text-xs space-y-1">
-                <p className="inline-flex items-center gap-1.5 font-semibold text-[#15803D]">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                  <span>Wrapped up today</span>
+                <p className="inline-flex items-center gap-1.5 font-bold text-[#15803D]">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>✅ Wrapped up today</span>
                 </p>
                 <p className="text-[#166534] line-clamp-2">
                   {eveningData.completedToday
@@ -299,17 +299,17 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
             {/* Next Day Priorities */}
             <div className="rounded-xl border border-[#E6E0F5] bg-[#FAF8FF] px-3.5 py-3 space-y-2">
               <div className="flex items-center justify-between gap-2 text-xs">
-                <span className="font-semibold text-[#1E1B2E]">Priorities for tomorrow</span>
+                <span className="font-bold text-[#1E1B2E]">🌅 Priorities for tomorrow</span>
                 {eveningData.followUpsDueOrTomorrow.length > 0 && (
-                  <span className="inline-flex items-center gap-1 font-medium text-[#6D4AFF]">
-                    <Send className="h-3 w-3" aria-hidden="true" />
+                  <span className="inline-flex items-center gap-1 font-semibold text-[#6D4AFF] tabular-nums">
+                    <Send className="h-3.5 w-3.5" aria-hidden="true" />
                     {eveningData.followUpsDueOrTomorrow.length} follow-up(s)
                   </span>
                 )}
               </div>
               {eveningData.tomorrowPriorities.length === 0 ? (
                 <p className="text-xs text-[#5B5570]">
-                  No pending tasks scheduled for tomorrow — enjoy your evening!
+                  ✨ No pending tasks scheduled for tomorrow — enjoy your evening!
                 </p>
               ) : (
                 <div className="space-y-1.5">
@@ -321,17 +321,20 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
                         key={t.id}
                         className="flex items-center justify-between gap-2 rounded-lg border border-[#EDE9F6] bg-white px-3 py-2 text-xs"
                       >
-                        <div className="min-w-0">
-                          <p className="font-semibold text-[#1E1B2E] truncate">
-                            {idx + 1}. {t.title}
-                          </p>
-                          <p className="text-[11px] text-[#5B5570] truncate">
-                            <span className={`font-medium ${prio.text}`}>{t.priority}</span> ·{' '}
-                            {formatFriendlyDateTime(t.deadline, t.deadlineTime, today)}
-                          </p>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#F3EFFF] text-[11px] font-bold text-[#5B38EE] tabular-nums">
+                            {idx + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-[#1E1B2E] truncate">{t.title}</p>
+                            <p className="text-[11px] text-[#5B5570] truncate">
+                              <span className={`font-medium ${prio.text}`}>{t.priority}</span> ·{' '}
+                              {formatFriendlyDateTime(t.deadline, t.deadlineTime, today)}
+                            </p>
+                          </div>
                         </div>
-                        <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-[#5B5570] tabular-nums">
-                          <Clock className="h-3 w-3" aria-hidden="true" />
+                        <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-[#5B5570] tabular-nums">
+                          <Clock className="h-3.5 w-3.5 text-[#7C7594]" aria-hidden="true" />
                           {formatDuration(t.estimatedMinutes)}
                         </span>
                       </div>
@@ -344,36 +347,49 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
         ) : (
           <>
             {/* Workload & Calendar Capacity Meter */}
-            <div className="rounded-xl border border-[#E6E0F5] bg-[#FAF8FF] px-3.5 py-2.5">
+            <div className="rounded-xl border border-[#E6E0F5] bg-[#FAF8FF] px-3.5 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums">
-                <span className="font-medium text-[#1E1B2E]">
-                  Today&apos;s load:{' '}
+                <span className="font-semibold text-[#1E1B2E]">
+                  📊 Today&apos;s load:{' '}
                   <span
                     className={
-                      isOverCapacity ? 'font-bold text-[#C2410C]' : 'font-semibold text-[#15803D]'
+                      isOverCapacity ? 'font-bold text-[#C2410C]' : 'font-bold text-[#15803D]'
                     }
                   >
                     {formatDuration(workload.remainingMinutesToday)}
                   </span>{' '}
-                  planned of {formatDuration(openMinutesAfterCalendar)} open
+                  / {formatDuration(openMinutesAfterCalendar)} open
                 </span>
 
-                {calendarConnected && (
-                  <span className="inline-flex items-center gap-1 font-medium text-[#1D4ED8]">
-                    <Calendar className="h-3.5 w-3.5" />
-                    {calendarEvents.length} Calendar event(s) ({formatDuration(calendarBusyMinutes)})
+                <div className="flex items-center gap-2.5">
+                  {calendarConnected && (
+                    <span className="inline-flex items-center gap-1 font-medium text-[#1D4ED8]">
+                      <Calendar className="h-4 w-4" />
+                      {calendarEvents.length} events ({formatDuration(calendarBusyMinutes)})
+                    </span>
+                  )}
+                  <span
+                    className={`font-extrabold ${
+                      isOverCapacity
+                        ? 'text-[#C2410C]'
+                        : capacityRatio >= 80
+                          ? 'text-[#D97706]'
+                          : 'text-[#15803D]'
+                    }`}
+                  >
+                    {capacityRatio}%
                   </span>
-                )}
+                </div>
               </div>
 
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[#E8E0F7]">
+              <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-[#E8E0F7]">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${
                     isOverCapacity
-                      ? 'bg-[#EA580C]'
+                      ? 'bg-gradient-to-r from-[#EA580C] to-[#F97316]'
                       : capacityRatio >= 80
-                        ? 'bg-[#F59E0B]'
-                        : 'bg-[#16A34A]'
+                        ? 'bg-gradient-to-r from-[#F59E0B] to-[#FBBF24]'
+                        : 'bg-gradient-to-r from-[#16A34A] to-[#22C55E]'
                   }`}
                   style={{ width: `${capacityRatio}%` }}
                 />
@@ -383,9 +399,9 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
             {/* Schedule Conflict or Assistant Capacity Guidance */}
             {plan.conflicts.length > 0 ? (
               <div className="rounded-xl border border-[#FED7AA] bg-[#FFF7ED] px-3.5 py-2.5 text-xs space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold text-[#C2410C]">
-                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                  <span>Tight schedule alert</span>
+                <div className="flex items-center gap-1.5 font-bold text-[#C2410C]">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>⚠️ Tight schedule alert</span>
                 </div>
                 <p className="text-[#9A3412]">{plan.conflicts[0]}</p>
               </div>
@@ -393,12 +409,11 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
               <div className="flex items-start gap-2.5 rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-3.5 py-2.5 text-xs">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#16A34A]" />
                 <p className="text-[#166534]">
-                  <span className="font-semibold">
-                    {firstName ? `On track, ${firstName}: ` : 'On track: '}
+                  <span className="font-bold">
+                    {firstName ? `✅ On track, ${firstName}: ` : '✅ On track: '}
                   </span>
                   {formatDuration(Math.max(0, openMinutesAfterCalendar - workload.remainingMinutesToday))}{' '}
-                  of buffer remains in your daily budget — knock out your top focus item below while
-                  energy is high.
+                  buffer open today — start with your #1 focus task below.
                 </p>
               </div>
             ) : null}

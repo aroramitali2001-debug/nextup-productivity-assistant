@@ -146,8 +146,8 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
         {/* My Career Focus Card */}
         <div className="overflow-hidden rounded-2xl border border-[#DDD6FE] bg-white shadow-2xs lg:col-span-5">
           <div className="flex items-center justify-between gap-2 border-b border-[#EDE9F6] bg-gradient-to-r from-[#F6F2FF] to-[#FAF8FF] px-4 py-3.5 sm:px-5">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#6D4AFF] shadow-2xs border border-[#E5DFF2]">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#6D4AFF] shadow-2xs border border-[#E5DFF2]">
                 <Target className="h-5 w-5" aria-hidden="true" />
               </span>
               <div>
@@ -155,7 +155,7 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
                   🎯 My Career Focus
                 </h2>
                 <p className="text-xs text-[#5B5570]">
-                  Choose your target track to personalize AI guidance &amp; job searches
+                  Pick your target track for personalized AI guidance &amp; job links
                 </p>
               </div>
             </div>
@@ -235,19 +235,19 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
         <div className="overflow-hidden rounded-2xl border border-[#D4C8F2] bg-white shadow-2xs lg:col-span-7">
           <div className="flex flex-col gap-2.5 border-b border-[#E4DCF7] bg-gradient-to-r from-[#F5F1FF] via-[#F1EBFF] to-[#FAF8FF] px-4 py-3.5 sm:flex-row sm:items-start sm:justify-between sm:px-5">
             <div className="flex items-start gap-3 min-w-0">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
                 <Lightbulb className="h-5 w-5" aria-hidden="true" />
               </span>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-base font-bold text-[#1E1B2E]">💡 Career Insights</h2>
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-[#5B38EE]">
-                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                    <Sparkles className="h-4 w-4" aria-hidden="true" />
                     {insights.source === 'gemini' ? 'Gemini AI Guidance' : 'Tailored Career Plan'}
                   </span>
                 </div>
-                <p className="mt-0.5 text-xs font-medium text-[#6D4AFF]">
-                  Personalized for {firstName ? `${firstName} · ` : ''}
+                <p className="mt-0.5 text-xs font-semibold text-[#6D4AFF]">
+                  {selectedOption.emoji} {firstName ? `${firstName} · ` : ''}
                   {activeFocusLabel}
                 </p>
                 <p className="mt-1 text-sm leading-snug text-[#4C4563]">{insights.summary}</p>
@@ -268,6 +268,50 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
           </div>
 
           <div className="p-4 sm:p-5 space-y-4">
+            {/* Compact Visual Career Guidance Counts */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <button
+                type="button"
+                onClick={() => setActiveTab('roles_skills')}
+                className="cursor-pointer rounded-xl border border-[#DDD6FE] bg-[#FAF8FF] px-3 py-2 text-left hover:border-[#6D4AFF] transition-colors"
+              >
+                <span className="text-[11px] font-semibold text-[#5B38EE]">💼 Target Roles</span>
+                <p className="text-base font-extrabold text-[#1E1B2E] tabular-nums">
+                  {insights.recommendedRoles.length}
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('roles_skills')}
+                className="cursor-pointer rounded-xl border border-[#99F6E4] bg-[#F0FDFA] px-3 py-2 text-left hover:border-[#0D9488] transition-colors"
+              >
+                <span className="text-[11px] font-semibold text-[#0F766E]">🛠️ Core Skills</span>
+                <p className="text-base font-extrabold text-[#134E4A] tabular-nums">
+                  {insights.skillsToDevelop.length}
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('prep_strategy')}
+                className="cursor-pointer rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2 text-left hover:border-[#2563EB] transition-colors"
+              >
+                <span className="text-[11px] font-semibold text-[#1D4ED8]">🎤 Prep &amp; Resume</span>
+                <p className="text-base font-extrabold text-[#1E3A8A] tabular-nums">
+                  {insights.interviewPrepTips.length + insights.resumeAndAppTips.length}
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('resources_keywords')}
+                className="cursor-pointer rounded-xl border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-2 text-left hover:border-[#16A34A] transition-colors"
+              >
+                <span className="text-[11px] font-semibold text-[#15803D]">📚 Resources</span>
+                <p className="text-base font-extrabold text-[#14532D] tabular-nums">
+                  {insights.learningResources.length + insights.searchKeywords.length}
+                </p>
+              </button>
+            </div>
+
             {/* Compact Interactive Insight Tabs */}
             <div
               role="tablist"
@@ -285,7 +329,7 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
                     : 'text-[#5B5570] hover:text-[#1E1B2E]'
                 }`}
               >
-                <Briefcase className="h-3.5 w-3.5" aria-hidden="true" />
+                <Briefcase className="h-4 w-4" aria-hidden="true" />
                 <span>Roles, Skills &amp; Priorities</span>
               </button>
 
@@ -300,7 +344,7 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
                     : 'text-[#5B5570] hover:text-[#1E1B2E]'
                 }`}
               >
-                <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />
+                <MessageSquare className="h-4 w-4" aria-hidden="true" />
                 <span>Interview, Search &amp; Resume</span>
               </button>
 
@@ -315,7 +359,7 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
                     : 'text-[#5B5570] hover:text-[#1E1B2E]'
                 }`}
               >
-                <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                <BookOpen className="h-4 w-4" aria-hidden="true" />
                 <span>Resources &amp; Keywords</span>
               </button>
             </div>
@@ -424,12 +468,14 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
                 <div className="rounded-xl border border-[#FED7AA] bg-[#FFFBF5] p-3.5 space-y-2">
                   <h3 className="inline-flex items-center gap-1.5 text-xs font-bold text-[#9A3412]">
                     <Sparkles className="h-4 w-4 text-[#EA580C]" aria-hidden="true" />
-                    <span>AI Opportunity Priorities</span>
+                    <span>⚡ AI Opportunity Priorities</span>
                   </h3>
                   <ul className="space-y-1.5 text-xs text-[#7C2D12]">
-                    {insights.opportunityPriorities.map((tip) => (
+                    {insights.opportunityPriorities.map((tip, idx) => (
                       <li key={tip} className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#EA580C]" aria-hidden="true" />
+                        <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[#FFEDD5] text-[10px] font-bold text-[#C2410C] tabular-nums">
+                          {idx + 1}
+                        </span>
                         <span className="leading-relaxed">{tip}</span>
                       </li>
                     ))}
@@ -445,12 +491,14 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
                   <div className="rounded-xl border border-[#DDD6FE] bg-[#FAF8FF] p-3.5 space-y-2">
                     <h3 className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4C2F96]">
                       <MessageSquare className="h-4 w-4 text-[#6D4AFF]" aria-hidden="true" />
-                      <span>Interview Preparation</span>
+                      <span>🎤 Interview Preparation</span>
                     </h3>
                     <ul className="space-y-2 text-xs text-[#4C4563]">
-                      {insights.interviewPrepTips.map((tip) => (
+                      {insights.interviewPrepTips.map((tip, idx) => (
                         <li key={tip} className="flex items-start gap-2 leading-relaxed">
-                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#6D4AFF]" aria-hidden="true" />
+                          <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[#EDE9FE] text-[10px] font-bold text-[#5B38EE] tabular-nums">
+                            {idx + 1}
+                          </span>
                           <span>{tip}</span>
                         </li>
                       ))}
@@ -461,12 +509,14 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
                   <div className="rounded-xl border border-[#BFDBFE] bg-[#F5F9FF] p-3.5 space-y-2">
                     <h3 className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1E3A8A]">
                       <Compass className="h-4 w-4 text-[#2563EB]" aria-hidden="true" />
-                      <span>Job Search Strategies</span>
+                      <span>🧭 Job Search Strategies</span>
                     </h3>
                     <ul className="space-y-2 text-xs text-[#1E40AF]">
-                      {insights.jobSearchStrategies.map((strategy) => (
+                      {insights.jobSearchStrategies.map((strategy, idx) => (
                         <li key={strategy} className="flex items-start gap-2 leading-relaxed">
-                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2563EB]" aria-hidden="true" />
+                          <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-[#DBEAFE] text-[10px] font-bold text-[#1D4ED8] tabular-nums">
+                            {idx + 1}
+                          </span>
                           <span>{strategy}</span>
                         </li>
                       ))}
@@ -479,7 +529,7 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="inline-flex items-center gap-1.5 text-xs font-bold text-[#14532D]">
                       <FileText className="h-4 w-4 text-[#16A34A]" aria-hidden="true" />
-                      <span>Resume &amp; Application Improvements</span>
+                      <span>📄 Resume &amp; Application Improvements</span>
                     </h3>
                     <button
                       type="button"
@@ -594,7 +644,7 @@ export const CareerCenterSection: React.FC<CareerCenterSectionProps> = ({
       <section className="overflow-hidden rounded-2xl border border-[#DDD6FE] bg-white shadow-2xs">
         <div className="flex flex-col gap-2 border-b border-[#EDE9F6] bg-gradient-to-r from-[#F6F2FF] via-[#F2EEFF] to-[#FAF8FF] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
               <Briefcase className="h-5 w-5" aria-hidden="true" />
             </span>
             <div>
