@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User } from 'firebase/auth';
 import {
+  AlertCircle,
   Calendar,
   CheckCircle2,
   ExternalLink,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { WorkspaceConfirmModal } from '../components/WorkspaceConfirmModal';
+import { GoogleSignInMode, isEmbeddedIframe } from '../services/googleAuth';
 import {
   addTaskToGoogleCalendar,
   CalendarEventItem,
@@ -33,10 +35,14 @@ interface IntegrationsViewProps {
   accessToken: string | null;
   isSigningIn: boolean;
   authError: string | null;
+  authOfferRedirect: boolean;
+  calendarConnected: boolean;
+  sheetsConnected: boolean;
+  gmailReadConnected: boolean;
   emailSetupReady: boolean;
   emailRemindersOptIn: boolean;
   firstName: string;
-  onGoogleSignIn: () => Promise<void>;
+  onGoogleSignIn: (mode?: GoogleSignInMode) => Promise<void>;
   onGoogleSignOut: () => Promise<void>;
   calendarEvents: CalendarEventItem[];
   calendarBusyMinutes: number;
@@ -63,6 +69,10 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
   accessToken,
   isSigningIn,
   authError,
+  authOfferRedirect,
+  calendarConnected,
+  sheetsConnected,
+  gmailReadConnected,
   emailSetupReady,
   emailRemindersOptIn,
   firstName,
@@ -81,7 +91,11 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
   onNotify,
 }) => {
   const today = toLocalDateKey();
-  const isConnected = Boolean(googleUser && accessToken);
+  const inIframe = isEmbeddedIframe();
+  const hasSessionToken = Boolean(googleUser && accessToken);
+  const isConnected = Boolean(
+    hasSessionToken && (calendarConnected || sheetsConnected || gmailReadConnected || emailSetupReady)
+  );
 
   // Calendar state
   const [selectedTaskIdForCal, setSelectedTaskIdForCal] = useState<string>('');
@@ -291,7 +305,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
       </div>
 
       {/* Onboarding & Connection Card */}
-      <section className="rounded-2xl border border-[#DDD6FE] bg-white p-4 sm:p-5">
+      <section className="rounded-2xl border border-[#DDD6FE] bg-white p-4 sm:p-5 space-y-3">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F3EFFF] text-[#6D4AFF]">
@@ -302,21 +316,20 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                 {isConnected
                   ? `Connected as ${googleUser?.displayName || googleUser?.email}`
                   : googleUser
-                    ? 'Session needs fresh Google permission'
+                    ? `Signed in as ${googleUser.displayName || googleUser.email}`
                     : 'Connect your Google Workspace'}
               </h2>
               <p className="mt-0.5 text-xs leading-relaxed text-[#5B5570]">
                 {isConnected
-                  ? `Signed in (${googleUser?.email}). Tokens stay in memory for this session only.`
-                  : 'Sign in with Google to enable live Calendar events, Sheets application sync, and read-only Gmail recruitment scanning.'}
+                  ? `Signed in (${googleUser?.email}) with verified Workspace permissions for this session.`
+                  : googleUser
+                    ? 'Your Google account stayed signed in across refresh. For security, Workspace API access tokens stay in memory only—verify permissions below to reconnect Calendar, Sheets, and Gmail.'
+                    : 'Sign in with Google to enable live Calendar events, Sheets application sync, and Gmail recruitment scanning.'}
               </p>
-              {authError && (
-                <p className="mt-1.5 text-xs font-medium text-[#DC2626]">{authError}</p>
-              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {isConnected ? (
               <button
                 type="button"
@@ -327,14 +340,69 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
                 <span>Disconnect</span>
               </button>
             ) : (
-              <GoogleSignInButton
-                onClick={onGoogleSignIn}
-                disabled={isSigningIn}
-                label={isSigningIn ? 'Connecting...' : 'Sign in with Google'}
-              />
+              <>
+                <GoogleSignInButton
+                  onClick={() => void onGoogleSignIn('auto')}
+                  disabled={isSigningIn}
+                  label={
+                    isSigningIn
+                      ? 'Connecting...'
+                      : googleUser
+                        ? 'Reconnect Google Workspace'
+                        : 'Sign in with Google'
+                  }
+                />
+                {googleUser && (
+                  <button
+                    type="button"
+                    onClick={onGoogleSignOut}
+                    disabled={isSigningIn}
+                    className="flex min-h-[42px] items-center gap-1.5 rounded-xl border border-[#E5DFF2] bg-[#FAF9FE] px-3 text-xs font-medium text-[#5B5570] hover:bg-[#F1ECFA] hover:text-[#1E1B2E] transition-colors"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Sign out</span>
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
+
+        {!isConnected && !inIframe && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#F1ECFA] pt-2.5 text-xs text-[#5B5570]">
+            <span>Having trouble with browser popups on this site?</span>
+            <button
+              type="button"
+              onClick={() => void onGoogleSignIn('redirect')}
+              disabled={isSigningIn}
+              className="font-semibold text-[#6D4AFF] hover:underline disabled:opacity-50"
+            >
+              Sign in via full-page redirect instead
+            </button>
+          </div>
+        )}
+
+        {authError && (
+          <div
+            role="alert"
+            className="flex flex-col gap-2 rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-3 text-xs text-[#991B1B] sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#DC2626]" />
+              <p className="leading-relaxed">{authError}</p>
+            </div>
+            {authOfferRedirect && !inIframe && (
+              <button
+                type="button"
+                onClick={() => void onGoogleSignIn('redirect')}
+                disabled={isSigningIn}
+                className="min-h-[36px] shrink-0 rounded-lg border border-[#FECACA] bg-white px-3 font-semibold text-[#991B1B] hover:bg-[#FEE2E2] transition-colors whitespace-nowrap"
+              >
+                Use redirect sign-in
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Integration Cards Grid */}
@@ -356,14 +424,22 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
               </div>
               <span
                 className={`text-xs font-semibold whitespace-nowrap ${
-                  isConnected ? 'text-[#15803D]' : 'text-[#5B5570]'
+                  calendarConnected
+                    ? 'text-[#15803D]'
+                    : hasSessionToken
+                      ? 'text-[#C2410C]'
+                      : 'text-[#5B5570]'
                 }`}
               >
-                {isConnected ? 'Connected' : 'Ready to connect'}
+                {calendarConnected
+                  ? 'Connected'
+                  : hasSessionToken
+                    ? 'Permission needed'
+                    : 'Ready to connect'}
               </span>
             </div>
 
-            {isConnected ? (
+            {calendarConnected ? (
               <div className="space-y-3 border-t border-[#F1ECFA] pt-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-medium text-[#1E1B2E] tabular-nums">
@@ -462,14 +538,22 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
               </div>
               <span
                 className={`text-xs font-semibold whitespace-nowrap ${
-                  isConnected ? 'text-[#15803D]' : 'text-[#5B5570]'
+                  sheetsConnected
+                    ? 'text-[#15803D]'
+                    : hasSessionToken
+                      ? 'text-[#C2410C]'
+                      : 'text-[#5B5570]'
                 }`}
               >
-                {isConnected ? 'Connected' : 'Ready to connect'}
+                {sheetsConnected
+                  ? 'Connected'
+                  : hasSessionToken
+                    ? 'Permission needed'
+                    : 'Ready to connect'}
               </span>
             </div>
 
-            {isConnected ? (
+            {sheetsConnected ? (
               <div className="space-y-3 border-t border-[#F1ECFA] pt-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <input
@@ -585,17 +669,17 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
               </div>
               <span
                 className={`text-xs font-semibold whitespace-nowrap ${
-                  emailSetupReady
+                  emailSetupReady && gmailReadConnected
                     ? 'text-[#15803D]'
-                    : isConnected
+                    : hasSessionToken
                       ? 'text-[#C2410C]'
                       : 'text-[#5B5570]'
                 }`}
               >
-                {emailSetupReady
+                {emailSetupReady && gmailReadConnected
                   ? 'Connected'
-                  : isConnected
-                    ? 'Email setup required'
+                  : hasSessionToken
+                    ? 'Permission needed'
                     : 'Setup required'}
               </span>
             </div>
@@ -604,8 +688,8 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
               <div className="rounded-xl border border-[#FED7AA] bg-[#FFF7ED] px-3 py-2.5 text-xs text-[#9A3412] space-y-1">
                 <p className="font-semibold">Email reminders setup required</p>
                 <p>
-                  {isConnected
-                    ? 'Reconnect with Google above to grant Gmail sending permission for verified task reminders.'
+                  {hasSessionToken
+                    ? 'Reconnect with Google above and check Gmail permission to enable recruitment scanning and verified task reminders.'
                     : 'Sign in with Google above to enable recruitment scanning and verified email reminders.'}
                 </p>
               </div>
@@ -642,7 +726,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
               </div>
             )}
 
-            {isConnected ? (
+            {gmailReadConnected ? (
               <div className="space-y-3 border-t border-[#F1ECFA] pt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-[#5B5570]">

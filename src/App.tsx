@@ -44,9 +44,14 @@ import {
 } from './services/prioritiser';
 import { isSampleApplication, isSampleTask, storageService } from './services/storage';
 import {
+  formatFirebaseAuthError,
+  GoogleSignInMode,
   googleSignIn,
   googleSignOut,
+  hasCalendarPermission,
+  hasGmailReadPermission,
   hasGmailSendPermission,
+  hasSheetsPermission,
   initGoogleAuth,
 } from './services/googleAuth';
 import { CalendarEventItem, fetchTodayCalendarEvents } from './services/workspaceApis';
@@ -144,6 +149,7 @@ export default function App() {
   const [grantedScopes, setGrantedScopes] = useState<string[]>([]);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [authOfferRedirect, setAuthOfferRedirect] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventItem[]>([]);
   const [calendarBusyMinutes, setCalendarBusyMinutes] = useState(0);
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
@@ -159,6 +165,15 @@ export default function App() {
     [profile.name, googleUser?.displayName]
   );
 
+  const calendarConnected = Boolean(
+    googleUser && accessToken && hasCalendarPermission(grantedScopes)
+  );
+  const sheetsConnected = Boolean(
+    googleUser && accessToken && hasSheetsPermission(grantedScopes)
+  );
+  const gmailReadConnected = Boolean(
+    googleUser && accessToken && hasGmailReadPermission(grantedScopes)
+  );
   const emailSetupReady = Boolean(
     googleUser &&
       accessToken &&
@@ -188,9 +203,10 @@ export default function App() {
   }, [toast]);
 
   const refreshCalendar = useCallback(
-    async (tokenOverride?: string) => {
+    async (tokenOverride?: string, scopesOverride?: string[]) => {
       const token = tokenOverride ?? accessToken;
-      if (!token) return;
+      const scopesToCheck = scopesOverride ?? grantedScopes;
+      if (!token || !hasCalendarPermission(scopesToCheck)) return;
       setIsLoadingCalendar(true);
       try {
         const res = await fetchTodayCalendarEvents(token);
@@ -203,62 +219,98 @@ export default function App() {
         setIsLoadingCalendar(false);
       }
     },
-    [accessToken]
+    [accessToken, grantedScopes]
   );
 
   useEffect(() => {
-    const unsubscribe = initGoogleAuth(
-      (user, token, scopes) => {
+    const unsubscribe = initGoogleAuth({
+      onRedirectPendingChange: (pending) => {
+        setIsSigningIn(pending);
+      },
+      onAuthSuccess: (user, token, scopes, meta) => {
         setGoogleUser(user);
         setAccessToken(token);
         setGrantedScopes(scopes);
         setAuthError(null);
+        setAuthOfferRedirect(false);
         const authFirst = extractFirstName(user.displayName);
         if (authFirst) {
           setProfile((prev) =>
             isPlaceholderName(prev.name) ? { ...prev, name: authFirst } : prev
           );
         }
+        if (meta?.fromRedirect) {
+          if (meta.returnTab === 'integrations') {
+            setActiveTab('integrations');
+          }
+          setToast({
+            message: authFirst
+              ? `Welcome, ${authFirst}! Connected Google account (${user.email ?? 'signed in'})`
+              : `Connected Google account (${user.email ?? 'signed in'})`,
+          });
+          if (hasCalendarPermission(scopes)) {
+            void refreshCalendar(token, scopes);
+          }
+        }
       },
-      (user) => {
+      onAuthClear: (user) => {
         setGoogleUser(user);
         setAccessToken(null);
         setGrantedScopes([]);
         setCalendarEvents([]);
         setCalendarBusyMinutes(0);
-      }
-    );
+      },
+      onAuthError: (errorInfo, returnTab) => {
+        setAuthError(errorInfo.message);
+        setAuthOfferRedirect(errorInfo.offerRedirect);
+        if (returnTab === 'integrations') {
+          setActiveTab('integrations');
+        }
+        setToast({ message: errorInfo.message });
+      },
+    });
     return () => unsubscribe();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleGoogleSignIn = useCallback(async () => {
-    setIsSigningIn(true);
-    setAuthError(null);
-    try {
-      const { user, accessToken: freshToken, grantedScopes: freshScopes } = await googleSignIn();
-      setGoogleUser(user);
-      setAccessToken(freshToken);
-      setGrantedScopes(freshScopes);
-      const authFirst = extractFirstName(user.displayName);
-      if (authFirst) {
-        setProfile((prev) =>
-          isPlaceholderName(prev.name) ? { ...prev, name: authFirst } : prev
-        );
+  const handleGoogleSignIn = useCallback(
+    async (mode: GoogleSignInMode = 'auto') => {
+      setIsSigningIn(true);
+      setAuthError(null);
+      setAuthOfferRedirect(false);
+      try {
+        const res = await googleSignIn(mode, activeTab);
+        if (res.status === 'redirecting') {
+          // Browser is navigating away to Google sign-in
+          return;
+        }
+
+        const { user, accessToken: freshToken, grantedScopes: freshScopes } = res;
+        setGoogleUser(user);
+        setAccessToken(freshToken);
+        setGrantedScopes(freshScopes);
+        const authFirst = extractFirstName(user.displayName);
+        if (authFirst) {
+          setProfile((prev) =>
+            isPlaceholderName(prev.name) ? { ...prev, name: authFirst } : prev
+          );
+        }
+        setToast({
+          message: authFirst
+            ? `Welcome, ${authFirst}! Connected Google account (${user.email ?? 'signed in'})`
+            : `Connected Google account (${user.email ?? 'signed in'})`,
+        });
+        await refreshCalendar(freshToken, freshScopes);
+      } catch (err) {
+        const info = formatFirebaseAuthError(err);
+        setAuthError(info.message);
+        setAuthOfferRedirect(info.offerRedirect);
+        setToast({ message: info.message });
+      } finally {
+        setIsSigningIn(false);
       }
-      setToast({
-        message: authFirst
-          ? `Welcome, ${authFirst}! Connected Google account (${user.email ?? 'signed in'})`
-          : `Connected Google account (${user.email ?? 'signed in'})`,
-      });
-      await refreshCalendar(freshToken);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Google Sign-In was cancelled or failed.';
-      setAuthError(message);
-    } finally {
-      setIsSigningIn(false);
-    }
-  }, [refreshCalendar]);
+    },
+    [refreshCalendar, activeTab]
+  );
 
   const handleGoogleSignOut = useCallback(async () => {
     await googleSignOut();
@@ -268,6 +320,7 @@ export default function App() {
     setCalendarEvents([]);
     setCalendarBusyMinutes(0);
     setAuthError(null);
+    setAuthOfferRedirect(false);
     setToast({ message: 'Disconnected Google Workspace' });
   }, []);
 
@@ -275,7 +328,7 @@ export default function App() {
 
   const calendarContext: PlannerCalendarContext = useMemo(
     () => ({
-      connected: Boolean(googleUser && accessToken),
+      connected: calendarConnected,
       busyMinutes: calendarBusyMinutes,
       events: calendarEvents.map((e) => ({
         summary: e.summary,
@@ -283,7 +336,7 @@ export default function App() {
         durationMinutes: e.durationMinutes,
       })),
     }),
-    [googleUser, accessToken, calendarBusyMinutes, calendarEvents]
+    [calendarConnected, calendarBusyMinutes, calendarEvents]
   );
 
   const overloadedDays = useMemo(
@@ -1147,7 +1200,7 @@ export default function App() {
             onApproveDeprioritise={handleApproveDeprioritise}
             onDismissPlanSuggestion={handleDismissPlanSuggestion}
             onNavigateTab={handleNavigateTab}
-            calendarConnected={Boolean(googleUser && accessToken)}
+            calendarConnected={calendarConnected}
             calendarEvents={calendarEvents}
             calendarBusyMinutes={calendarBusyMinutes}
             firstName={firstName}
@@ -1186,7 +1239,7 @@ export default function App() {
             profile={profile}
             tasks={tasks}
             applications={applications}
-            calendarConnected={Boolean(googleUser && accessToken)}
+            calendarConnected={calendarConnected}
             calendarEvents={calendarEvents}
             calendarBusyMinutes={calendarBusyMinutes}
             onOpenNewTaskForDate={(date) => openNewTaskModal(date)}
@@ -1204,6 +1257,10 @@ export default function App() {
             accessToken={accessToken}
             isSigningIn={isSigningIn}
             authError={authError}
+            authOfferRedirect={authOfferRedirect}
+            calendarConnected={calendarConnected}
+            sheetsConnected={sheetsConnected}
+            gmailReadConnected={gmailReadConnected}
             emailSetupReady={emailSetupReady}
             emailRemindersOptIn={profile.emailRemindersEnabled}
             firstName={firstName}
