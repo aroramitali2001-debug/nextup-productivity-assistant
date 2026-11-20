@@ -165,17 +165,16 @@ export function buildRuleBasedDailyPlan(
     : undefined;
   const nextDayLeadTitle = tomorrowTasks[0]?.title || leadTaskTitle;
 
-  const namePrefix = userName ? `${userName}, ` : '';
   const headlineSummary =
     briefingType === 'evening'
       ? activeTasks.length === 0
-        ? `${namePrefix}you wrapped up ${completedTodayCount} task${completedTodayCount === 1 ? '' : 's'} today and cleared your queue. Rest up — tomorrow is wide open.`
-        : `${namePrefix}you completed ${completedTodayCount} task${completedTodayCount === 1 ? '' : 's'} today${pendingTodayCount > 0 ? ` with ${pendingTodayCount} still open` : ''}. ${tomorrowTasks.length > 0 ? `Tomorrow features "${nextDayLeadTitle}"${followUpsTomorrow > 0 ? ` and ${followUpsTomorrow} follow-up${followUpsTomorrow === 1 ? '' : 's'}` : ''}.` : `Top carried-over priority for tomorrow: "${nextDayLeadTitle || 'review upcoming deadlines'}".`}`
+        ? `You wrapped up ${completedTodayCount} task${completedTodayCount === 1 ? '' : 's'} today and cleared your queue. Rest up — tomorrow is wide open.`
+        : `You completed ${completedTodayCount} task${completedTodayCount === 1 ? '' : 's'} today${pendingTodayCount > 0 ? ` with ${pendingTodayCount} still open` : ''}. ${tomorrowTasks.length > 0 ? `Tomorrow features "${nextDayLeadTitle}"${followUpsTomorrow > 0 ? ` and ${followUpsTomorrow} follow-up${followUpsTomorrow === 1 ? '' : 's'}` : ''}.` : `Top carried-over priority for tomorrow: "${nextDayLeadTitle || 'review upcoming deadlines'}".`}`
       : activeTasks.length === 0
-        ? `${namePrefix}your task queue is clear — a great window to review applications or plan ahead.`
+        ? 'Your task queue is clear — a great window to review applications or plan ahead.'
         : unrealisticTodayIds.length > 0
-          ? `${namePrefix}your plate is heavier than your ${availableHoursToday}h window${calendarContext?.connected && calendarBusyMins > 0 ? ` (with ${formatDuration(calendarBusyMins)} on Calendar)` : ''}. Protect "${leadTaskTitle || 'your top priority'}" first and consider shifting overflow items.`
-          : `${namePrefix}start with "${leadTaskTitle || 'your top priority'}"${followUpsToday > 0 ? ` and keep time for ${followUpsToday} follow-up${followUpsToday === 1 ? '' : 's'} due today` : ''}${calendarContext?.connected && calendarBusyMins > 0 ? ` around ${formatDuration(calendarBusyMins)} of Calendar events` : ''}. Your workload fits comfortably in your open hours.`;
+          ? `Your plate is heavier than your ${availableHoursToday}h window${calendarContext?.connected && calendarBusyMins > 0 ? ` (with ${formatDuration(calendarBusyMins)} on Calendar)` : ''}. Protect "${leadTaskTitle || 'your top priority'}" first and consider shifting overflow items.`
+          : `Start with "${leadTaskTitle || 'your top priority'}"${followUpsToday > 0 ? ` and keep time for ${followUpsToday} follow-up${followUpsToday === 1 ? '' : 's'} due today` : ''}${calendarContext?.connected && calendarBusyMins > 0 ? ` around ${formatDuration(calendarBusyMins)} of Calendar events` : ''}. Your workload fits comfortably in your open hours.`;
 
   return {
     source: 'rule-based',

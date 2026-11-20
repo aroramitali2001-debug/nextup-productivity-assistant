@@ -168,7 +168,13 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
                 </h2>
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-[#5B38EE]">
                   <Sparkles className="h-3.5 w-3.5" />
-                  {plan.source === 'gemini' ? 'Gemini AI' : 'Smart Plan'}
+                  {plan.source === 'gemini'
+                    ? isEvening
+                      ? 'Gemini Evening Plan'
+                      : 'Gemini Morning Plan'
+                    : isEvening
+                      ? 'Smart Evening Plan'
+                      : 'Smart Morning Plan'}
                 </span>
                 {planAcceptedToday && !isEvening && (
                   <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#15803D]">
@@ -177,6 +183,15 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
                   </span>
                 )}
               </div>
+              <p className="mt-1 text-xs font-semibold text-[#5B38EE]">
+                {isEvening
+                  ? firstName
+                    ? `Good evening, ${firstName}!`
+                    : 'Good evening!'
+                  : firstName
+                    ? `Good morning, ${firstName}!`
+                    : 'Good morning!'}
+              </p>
               <p className="mt-0.5 text-sm leading-snug text-[#4C4563]">{plan.headlineSummary}</p>
             </div>
           </div>
@@ -488,7 +503,7 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
             </button>
           ) : (
             <span className="text-xs font-medium text-[#5B5570]">
-              Evening preview · ready for tomorrow
+              Evening wrap-up · ready for tomorrow
             </span>
           )}
 

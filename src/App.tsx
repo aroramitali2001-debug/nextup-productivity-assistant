@@ -134,7 +134,7 @@ export default function App() {
     const timer = window.setInterval(syncPeriod, 60_000);
     return () => window.clearInterval(timer);
   }, [profile.timezone]);
-  const [aiPlanOverride, setAiPlanOverride] = useState<AIDailyPlan | null>(null);
+  const [aiPlansByMode, setAiPlansByMode] = useState<Partial<Record<BriefingType, AIDailyPlan>>>({});
   const [dismissedPlanKeys, setDismissedPlanKeys] = useState<Set<string>>(new Set());
   const [isPlanningAI, setIsPlanningAI] = useState(false);
 
@@ -209,7 +209,7 @@ export default function App() {
   useEffect(() => {
     storageService.saveTasks(tasks);
     // Invalidate stale Gemini override when task list changes so plan stays accurate
-    setAiPlanOverride(null);
+    setAiPlansByMode({});
   }, [tasks]);
 
   useEffect(() => {
@@ -379,9 +379,10 @@ export default function App() {
   );
 
   const activeDailyPlan = useMemo(() => {
+    const modeOverride = aiPlansByMode[briefingMode];
     const base =
-      aiPlanOverride && aiPlanOverride.briefingType === briefingMode
-        ? aiPlanOverride
+      modeOverride && modeOverride.briefingType === briefingMode
+        ? modeOverride
         : buildRuleBasedDailyPlan(
             tasks,
             applications,
@@ -403,7 +404,7 @@ export default function App() {
       ),
     };
   }, [
-    aiPlanOverride,
+    aiPlansByMode,
     briefingMode,
     tasks,
     applications,
@@ -534,7 +535,7 @@ export default function App() {
       briefingMode,
       profile.timezone
     );
-    setAiPlanOverride(plan);
+    setAiPlansByMode((prev) => ({ ...prev, [briefingMode]: plan }));
     setIsPlanningAI(false);
     const label = briefingMode === 'evening' ? 'Evening briefing' : 'Morning briefing';
     setToast({
