@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="112" fill="#6D4AFF"/>
+  <rect x="32" y="32" width="448" height="448" rx="88" fill="url(#nextupGrad)"/>
+  <path d="M156 266L222 332L360 184" stroke="#FFFFFF" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="372" cy="144" r="24" fill="#DDD6FE"/>
+  <defs>
+    <linearGradient id="nextupGrad" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7C5CFA"/>
+      <stop offset="1" stop-color="#5634E8"/>
+    </linearGradient>
+  </defs>
+</svg>
