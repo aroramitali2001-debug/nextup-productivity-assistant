@@ -23,6 +23,10 @@ import {
   PlannerCalendarContext,
 } from './services/aiPlanner';
 import {
+  generateAICareerInsights,
+  getCuratedCareerInsights,
+} from './services/careerGuidance';
+import {
   suggestFollowUpForNewApplication,
   suggestTasksForStatusChange,
 } from './services/applicationIntelligence';
@@ -68,6 +72,8 @@ import {
   ApplicationStatus,
   ApplicationViewFilter,
   BriefingType,
+  CareerFocusCategory,
+  CareerInsightsPlan,
   JobApplication,
   NavTab,
   ReplanResult,
@@ -137,6 +143,12 @@ export default function App() {
   const [aiPlansByMode, setAiPlansByMode] = useState<Partial<Record<BriefingType, AIDailyPlan>>>({});
   const [dismissedPlanKeys, setDismissedPlanKeys] = useState<Set<string>>(new Set());
   const [isPlanningAI, setIsPlanningAI] = useState(false);
+
+  // Career Focus & AI Career Insights
+  const [aiCareerInsightsByKey, setAiCareerInsightsByKey] = useState<
+    Record<string, CareerInsightsPlan>
+  >({});
+  const [isLoadingCareerInsights, setIsLoadingCareerInsights] = useState(false);
 
   const [replanModalOpen, setReplanModalOpen] = useState(false);
   const [replanResult, setReplanResult] = useState<ReplanResult | null>(null);
@@ -414,6 +426,61 @@ export default function App() {
     firstName,
     dismissedPlanKeys,
   ]);
+
+  const careerFocus: CareerFocusCategory = profile.careerFocus || 'Product Management';
+  const customCareerFocus = profile.customCareerFocus || '';
+  const careerInsightCacheKey =
+    careerFocus === 'Other'
+      ? `Other::${customCareerFocus.trim().toLowerCase()}`
+      : careerFocus;
+
+  const activeCareerInsights = useMemo(() => {
+    const aiCached = aiCareerInsightsByKey[careerInsightCacheKey];
+    if (aiCached) return aiCached;
+    return getCuratedCareerInsights(
+      careerFocus,
+      customCareerFocus,
+      applications,
+      tasks,
+      firstName
+    );
+  }, [
+    aiCareerInsightsByKey,
+    careerInsightCacheKey,
+    careerFocus,
+    customCareerFocus,
+    applications,
+    tasks,
+    firstName,
+  ]);
+
+  const handleSelectCareerFocus = useCallback((category: CareerFocusCategory) => {
+    setProfile((prev) => ({ ...prev, careerFocus: category }));
+    setToast({ message: `Career focus updated to ${category}` });
+  }, []);
+
+  const handleChangeCustomCareerFocus = useCallback((value: string) => {
+    setProfile((prev) => ({ ...prev, customCareerFocus: value }));
+  }, []);
+
+  const handleRefreshCareerInsights = useCallback(async () => {
+    setIsLoadingCareerInsights(true);
+    const result = await generateAICareerInsights(
+      careerFocus,
+      customCareerFocus,
+      applications,
+      tasks,
+      firstName
+    );
+    setAiCareerInsightsByKey((prev) => ({ ...prev, [careerInsightCacheKey]: result }));
+    setIsLoadingCareerInsights(false);
+    setToast({
+      message:
+        result.source === 'gemini'
+          ? `AI Career Insights updated for ${careerFocus === 'Other' && customCareerFocus.trim() ? customCareerFocus.trim() : careerFocus}`
+          : `Career insights refreshed for ${careerFocus}`,
+    });
+  }, [careerFocus, customCareerFocus, applications, tasks, firstName, careerInsightCacheKey]);
 
   // Task handlers
   const handleQuickAddTask = useCallback(
@@ -1220,7 +1287,11 @@ export default function App() {
                       : 'text-[#5B5570] hover:text-[#1E1B2E]'
                   }`}
                 >
-                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#6D4AFF]' : 'text-[#7C7594]'}`} />
+                  <Icon
+                    className={`h-[18px] w-[18px] shrink-0 ${
+                      isActive ? 'text-[#6D4AFF]' : 'text-[#7C7594]'
+                    }`}
+                  />
                   <span>{item.label}</span>
                   {isActive && (
                     <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[#6D4AFF]" />
@@ -1277,6 +1348,13 @@ export default function App() {
             onApprovePostpone={handleApprovePostpone}
             onApproveDeprioritise={handleApproveDeprioritise}
             onDismissPlanSuggestion={handleDismissPlanSuggestion}
+            careerFocus={careerFocus}
+            customCareerFocus={customCareerFocus}
+            careerInsights={activeCareerInsights}
+            isLoadingCareerInsights={isLoadingCareerInsights}
+            onSelectCareerFocus={handleSelectCareerFocus}
+            onChangeCustomCareerFocus={handleChangeCustomCareerFocus}
+            onRefreshCareerInsights={() => void handleRefreshCareerInsights()}
             onNavigateTab={handleNavigateTab}
             calendarConnected={calendarConnected}
             calendarEvents={calendarEvents}

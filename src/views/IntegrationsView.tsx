@@ -9,6 +9,7 @@ import {
   LogOut,
   Mail,
   MessageSquare,
+  Plug,
   Plus,
   RefreshCw,
   ShieldCheck,
@@ -311,11 +312,16 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">Integrations</h1>
-        <p className="mt-1 text-sm text-[#5B5570]">
-          Connect Google Calendar, Google Sheets, and Gmail securely via Google&apos;s official sign-in screen. NextUp never asks for your password and only mutates data when you confirm.
-        </p>
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
+          <Plug className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">Integrations</h1>
+          <p className="mt-0.5 text-sm text-[#5B5570]">
+            Connect Google Calendar, Google Sheets, and Gmail securely via Google&apos;s official sign-in screen. NextUp never asks for your password and only mutates data when you confirm.
+          </p>
+        </div>
       </div>
 
       {/* Onboarding & Connection Card */}

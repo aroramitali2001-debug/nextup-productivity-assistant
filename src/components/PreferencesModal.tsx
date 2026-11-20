@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Bell, Mail, RotateCcw, ShieldAlert, ShieldCheck, Trash2, X } from 'lucide-react';
-import { ReminderFrequency, StudentProfile } from '../types/nextup';
+import { CAREER_FOCUS_OPTIONS } from '../services/careerGuidance';
+import { CareerFocusCategory, ReminderFrequency, StudentProfile } from '../types/nextup';
 
 interface PreferencesModalProps {
   isOpen: boolean;
@@ -28,6 +29,9 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   onClearAllData,
 }) => {
   const [name, setName] = useState(profile.name);
+  const [careerFocus, setCareerFocus] = useState<CareerFocusCategory>(
+    profile.careerFocus || 'Product Management'
+  );
   const [threshold, setThreshold] = useState(profile.dailyTaskWarningThreshold);
   const [availableHours, setAvailableHours] = useState(profile.availableHoursToday);
 
@@ -54,6 +58,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     setName(profile.name || resolvedFirstName);
+    setCareerFocus(profile.careerFocus || 'Product Management');
     setThreshold(profile.dailyTaskWarningThreshold);
     setAvailableHours(profile.availableHoursToday ?? 4);
     setEmailRemindersEnabled(Boolean(profile.emailRemindersEnabled));
@@ -79,6 +84,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
     onSaveProfile({
       ...profile,
       name: name.trim(),
+      careerFocus,
       dailyTaskWarningThreshold: Math.max(2, Math.min(12, threshold)),
       availableHoursToday: Math.max(0.5, Math.min(16, availableHours)),
       remindersEnabled: emailRemindersEnabled,
@@ -141,6 +147,24 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
                   Automatically retrieved from your Google account ({resolvedFirstName}).
                 </p>
               )}
+            </div>
+
+            <div>
+              <label htmlFor="career-focus-select" className="block text-sm font-medium text-[#1E1B2E]">
+                Primary career focus
+              </label>
+              <select
+                id="career-focus-select"
+                value={careerFocus}
+                onChange={(e) => setCareerFocus(e.target.value as CareerFocusCategory)}
+                className="mt-1.5 w-full min-h-[44px] rounded-xl border border-[#E5DFF2] bg-[#FAF9FE] px-3.5 py-2 text-sm text-[#1E1B2E] focus:border-[#6D4AFF] focus:bg-white focus:outline-none"
+              >
+                {CAREER_FOCUS_OPTIONS.map((opt) => (
+                  <option key={opt.category} value={opt.category}>
+                    {opt.emoji} {opt.category}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

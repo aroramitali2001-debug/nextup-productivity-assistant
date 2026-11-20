@@ -135,11 +135,16 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">Applications</h1>
-        <p className="mt-0.5 text-sm text-[#5B5570]">
-          Track internships, interviews, recruiter contacts, and follow-up deadlines.
-        </p>
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
+          <Briefcase className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">Applications</h1>
+          <p className="mt-0.5 text-sm text-[#5B5570]">
+            Track internships, interviews, recruiter contacts, and follow-up deadlines.
+          </p>
+        </div>
       </div>
 
       {/* Interactive Pipeline Overview Strip */}
@@ -153,7 +158,7 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
         >
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-[#5B5570]">Active pipeline</span>
-            <Briefcase className="h-4 w-4 text-[#6D4AFF]" aria-hidden="true" />
+            <Briefcase className="h-[18px] w-[18px] text-[#6D4AFF]" aria-hidden="true" />
           </div>
           <p className="mt-0.5 text-xl font-bold text-[#1E1B2E] tabular-nums">{counts.Active}</p>
         </button>
@@ -171,7 +176,7 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
         >
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-[#9A3412]">Interviews &amp; OAs</span>
-            <ClipboardCheck className="h-4 w-4 text-[#EA580C]" aria-hidden="true" />
+            <ClipboardCheck className="h-[18px] w-[18px] text-[#EA580C]" aria-hidden="true" />
           </div>
           <p className="mt-0.5 text-xl font-bold text-[#C2410C] tabular-nums">
             {counts.InterviewOrOA}
@@ -198,7 +203,7 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
               Follow-ups due
             </span>
             <Send
-              className={`h-4 w-4 ${counts.FollowUps > 0 ? 'text-[#6D4AFF]' : 'text-[#7C7594]'}`}
+              className={`h-[18px] w-[18px] ${counts.FollowUps > 0 ? 'text-[#6D4AFF]' : 'text-[#7C7594]'}`}
               aria-hidden="true"
             />
           </div>
@@ -220,7 +225,7 @@ export const ApplicationsView: React.FC<ApplicationsViewProps> = ({
         >
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-[#15803D]">Offers</span>
-            <Award className="h-4 w-4 text-[#16A34A]" aria-hidden="true" />
+            <Award className="h-[18px] w-[18px] text-[#16A34A]" aria-hidden="true" />
           </div>
           <p className="mt-0.5 text-xl font-bold text-[#16A34A] tabular-nums">{counts.Offer}</p>
         </button>

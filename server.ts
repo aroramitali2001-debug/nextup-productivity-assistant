@@ -318,6 +318,86 @@ Only suggest moving or deprioritising tasks that genuinely cannot fit or have la
     }
   });
 
+  // 4. AI Career Insights & Personalized Role Guidance
+  app.post('/api/ai/career-insights', async (req, res) => {
+    const ai = getAiClient();
+    if (!ai) {
+      res.status(503).json({ error: 'Gemini API key is not configured.' });
+      return;
+    }
+
+    const { category, customFocus, userName, applications, careerTasks } = req.body as {
+      category?: string;
+      customFocus?: string;
+      userName?: string;
+      applications?: unknown[];
+      careerTasks?: unknown[];
+    };
+
+    if (!category) {
+      res.status(400).json({ error: 'Career focus category is required.' });
+      return;
+    }
+
+    const targetTrack =
+      category === 'Other' && customFocus?.trim() ? `${category} (${customFocus.trim()})` : category;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: MODEL_NAME,
+        contents: `Target career focus: ${targetTrack}.
+User first name: ${userName || 'not provided'}.
+Tracked applications JSON: ${JSON.stringify(applications ?? [])}
+Open career tasks JSON: ${JSON.stringify(careerTasks ?? [])}
+
+Generate deeply specific, practical career guidance tailored to "${targetTrack}" (never generic boilerplate).
+- summary: 1–2 concise personalized sentences (mention user first name ONLY if provided).
+- recommendedRoles: 5 specific job titles for ${targetTrack}.
+- skillsToDevelop: 5 concrete technical/functional skills or tools valued for ${targetTrack}.
+- searchKeywords: 5 effective job-board search keyword phrases for ${targetTrack}.
+- interviewPrepTips: 3–4 role-specific interview preparation tips for ${targetTrack}.
+- jobSearchStrategies: 3–4 practical job search strategies for ${targetTrack}.
+- opportunityPriorities: 2–3 actionable recommendations referencing the user's actual tracked applications/tasks if present, or advising which ${targetTrack} opportunities to prioritize first.
+- resumeAndAppTips: 3–4 concrete resume and application tailoring tips for ${targetTrack}.`,
+        config: {
+          systemInstruction:
+            'You are NextUp, a knowledgeable career coach for students and early-career professionals. Provide specific, domain-authentic advice tailored strictly to the chosen career track. Never invent fake companies or placeholder names.',
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              summary: { type: Type.STRING },
+              recommendedRoles: { type: Type.ARRAY, items: { type: Type.STRING } },
+              skillsToDevelop: { type: Type.ARRAY, items: { type: Type.STRING } },
+              searchKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
+              interviewPrepTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+              jobSearchStrategies: { type: Type.ARRAY, items: { type: Type.STRING } },
+              opportunityPriorities: { type: Type.ARRAY, items: { type: Type.STRING } },
+              resumeAndAppTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+            },
+            required: [
+              'summary',
+              'recommendedRoles',
+              'skillsToDevelop',
+              'searchKeywords',
+              'interviewPrepTips',
+              'jobSearchStrategies',
+              'opportunityPriorities',
+              'resumeAndAppTips',
+            ],
+          },
+        },
+      });
+
+      const insights = JSON.parse((response.text ?? '{}').trim());
+      res.json({ source: 'gemini', insights });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to generate AI career insights.';
+      res.status(502).json({ error: message });
+    }
+  });
+
   const isProd = process.env.NODE_ENV === 'production';
 
   if (!isProd) {

@@ -99,6 +99,39 @@ export interface IntegrationContextPayload {
   sheetSummary?: string;
 }
 
+export type CareerFocusCategory =
+  | 'HR & People Operations'
+  | 'Marketing'
+  | 'Consulting'
+  | 'Data Analytics'
+  | 'Finance'
+  | 'Operations'
+  | 'Product Management'
+  | 'Other';
+
+export interface CareerResourceItem {
+  title: string;
+  source: string;
+  description: string;
+  url: string;
+}
+
+export interface CareerInsightsPlan {
+  category: CareerFocusCategory;
+  customFocus?: string;
+  source: 'gemini' | 'curated';
+  generatedAt: string;
+  summary: string;
+  recommendedRoles: string[];
+  skillsToDevelop: string[];
+  searchKeywords: string[];
+  interviewPrepTips: string[];
+  jobSearchStrategies: string[];
+  opportunityPriorities: string[];
+  resumeAndAppTips: string[];
+  learningResources: CareerResourceItem[];
+}
+
 export interface StudentProfile {
   name: string;
   dailyTaskWarningThreshold: number;
@@ -113,6 +146,8 @@ export interface StudentProfile {
   taskDeadlineRemindersEnabled: boolean;
   preferredReminderFrequency: ReminderFrequency;
   timezone: string;
+  careerFocus?: CareerFocusCategory;
+  customCareerFocus?: string;
 }
 
 export type NavTab = 'dashboard' | 'tasks' | 'applications' | 'upcoming' | 'integrations';

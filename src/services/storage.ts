@@ -31,6 +31,8 @@ export const DEFAULT_PROFILE: StudentProfile = {
   taskDeadlineRemindersEnabled: true,
   preferredReminderFrequency: 'each_reminder',
   timezone: getDetectedTimezone(),
+  careerFocus: 'Product Management',
+  customCareerFocus: '',
 };
 
 export const DEFAULT_INTEGRATIONS: Record<IntegrationId, IntegrationState> = {

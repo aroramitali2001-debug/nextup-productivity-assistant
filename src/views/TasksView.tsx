@@ -217,11 +217,16 @@ export const TasksView: React.FC<TasksViewProps> = ({
   return (
     <div className="space-y-5">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">My Tasks</h1>
-        <p className="mt-0.5 text-sm text-[#5B5570]">
-          Add, organise, prioritise, and track every deadline in one workspace.
-        </p>
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
+          <ListTodo className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">My Tasks</h1>
+          <p className="mt-0.5 text-sm text-[#5B5570]">
+            Add, organise, prioritise, and track every deadline in one workspace.
+          </p>
+        </div>
       </div>
 
       {/* Centralized Quick Capture */}

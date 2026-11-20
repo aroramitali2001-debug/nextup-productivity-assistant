@@ -22,6 +22,7 @@ import {
   SunMedium,
   SunMoon,
 } from 'lucide-react';
+import { CareerCenterSection } from '../components/CareerCenterSection';
 import { MorningBriefingSection } from '../components/MorningBriefingSection';
 import { PWAInstallButton } from '../components/PWAInstallButton';
 import { isSampleTask } from '../services/storage';
@@ -30,6 +31,8 @@ import {
   AIDailyPlan,
   ApplicationViewFilter,
   BriefingType,
+  CareerFocusCategory,
+  CareerInsightsPlan,
   JobApplication,
   NavTab,
   OverloadedDayWarning,
@@ -90,6 +93,13 @@ interface DashboardViewProps {
   onApprovePostpone: (taskId: string, newDeadline: string) => void;
   onApproveDeprioritise: (taskId: string, newPriority: TaskPriority) => void;
   onDismissPlanSuggestion: (taskId: string, kind: 'postpone' | 'deprioritise') => void;
+  careerFocus: CareerFocusCategory;
+  customCareerFocus: string;
+  careerInsights: CareerInsightsPlan;
+  isLoadingCareerInsights: boolean;
+  onSelectCareerFocus: (category: CareerFocusCategory) => void;
+  onChangeCustomCareerFocus: (value: string) => void;
+  onRefreshCareerInsights: () => void;
   onNavigateTab: (
     tab: NavTab,
     taskFilter?: TaskViewFilter,
@@ -126,6 +136,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onApprovePostpone,
   onApproveDeprioritise,
   onDismissPlanSuggestion,
+  careerFocus,
+  customCareerFocus,
+  careerInsights,
+  isLoadingCareerInsights,
+  onSelectCareerFocus,
+  onChangeCustomCareerFocus,
+  onRefreshCareerInsights,
   onNavigateTab,
 }) => {
   const [currentHour, setCurrentHour] = useState(() =>
@@ -204,6 +221,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const upcomingPreview = upcomingTasks.slice(0, 3);
   const dynamicGreeting = getGreetingForHour(currentHour);
+  const greetingEmoji = currentHour < 12 ? '☀️' : currentHour < 17 ? '🌤️' : '🌙';
   const TimeIcon = currentHour < 12 ? Sun : currentHour < 17 ? SunMedium : Moon;
   const timeIconColor =
     currentHour < 12 ? 'text-[#EA580C]' : currentHour < 17 ? 'text-[#D97706]' : 'text-[#5B38EE]';
@@ -214,22 +232,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <header className="flex flex-col gap-3 pt-0.5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide text-[#6D4AFF]">
-            <TimeIcon className={`h-3.5 w-3.5 ${timeIconColor}`} aria-hidden="true" />
+            <TimeIcon className={`h-4 w-4 ${timeIconColor}`} aria-hidden="true" />
             <span>{formatHeaderDate(new Date(), profile.timezone)}</span>
           </p>
           <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-[#1E1B2E] sm:text-3xl text-balance">
             {firstName ? (
               <>
-                {dynamicGreeting}, <span className="text-[#5B38EE]">{firstName}</span>!
+                {dynamicGreeting}, <span className="text-[#5B38EE]">{firstName}</span>!{' '}
+                <span aria-hidden="true">{greetingEmoji}</span>
               </>
             ) : (
-              `${dynamicGreeting}!`
+              <>
+                {dynamicGreeting}! <span aria-hidden="true">{greetingEmoji}</span>
+              </>
             )}
           </h1>
           <p className="mt-0.5 text-sm text-[#5B5570]">
             {dueTodayTasks.length === 0 && overdueTasks.length === 0
-              ? 'Your day looks clear — plan ahead or add a priority task below.'
-              : 'Your daily command center — see what matters most and stay ahead.'}
+              ? 'Your day looks clear — plan ahead or explore career opportunities below.'
+              : 'Your daily command center — stay on top of priorities, deadlines, and your career search.'}
           </p>
         </div>
 
@@ -326,8 +347,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold text-[#4C2F96]">Due today</span>
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-[#6D4AFF] shadow-2xs">
-              <ListTodo className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#6D4AFF] shadow-2xs border border-[#E5DFF2]">
+              <ListTodo className="h-[18px] w-[18px]" aria-hidden="true" />
             </span>
           </div>
           <p className="mt-1 text-2xl font-bold text-[#6D4AFF] tabular-nums">
@@ -346,8 +367,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold text-[#B91C1C]">Overdue</span>
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-[#DC2626] shadow-2xs">
-              <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#DC2626] shadow-2xs border border-[#FECACA]">
+              <AlertCircle className="h-[18px] w-[18px]" aria-hidden="true" />
             </span>
           </div>
           <p className="mt-1 text-2xl font-bold text-[#DC2626] tabular-nums">
@@ -362,8 +383,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold text-[#1D4ED8]">Upcoming</span>
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-[#2563EB] shadow-2xs">
-              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#2563EB] shadow-2xs border border-[#BFDBFE]">
+              <CalendarDays className="h-[18px] w-[18px]" aria-hidden="true" />
             </span>
           </div>
           <p className="mt-1 text-2xl font-bold text-[#2563EB] tabular-nums">
@@ -378,8 +399,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold text-[#15803D]">Completed</span>
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-[#16A34A] shadow-2xs">
-              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#16A34A] shadow-2xs border border-[#BBF7D0]">
+              <CheckCircle2 className="h-[18px] w-[18px]" aria-hidden="true" />
             </span>
           </div>
           <p className="mt-1 text-2xl font-bold text-[#16A34A] tabular-nums">
@@ -421,11 +442,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Compact Today's Focus + Direct Inline Quick Add */}
           <section className="overflow-hidden rounded-2xl border border-[#FED7AA] bg-white shadow-2xs">
             <div className="flex items-center justify-between gap-2 border-b border-[#FDE8D3] bg-gradient-to-r from-[#FFF7ED] to-[#FFEDD5]/55 px-4 py-3 sm:px-5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-[#EA580C] shadow-2xs">
-                  <Flame className="h-4 w-4" aria-hidden="true" />
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#EA580C] shadow-2xs border border-[#FED7AA]">
+                  <Flame className="h-[18px] w-[18px]" aria-hidden="true" />
                 </span>
-                <h2 className="text-sm font-bold text-[#1E1B2E] sm:text-base">Today&apos;s Focus</h2>
+                <h2 className="text-sm font-bold text-[#1E1B2E] sm:text-base">
+                  🔥 Today&apos;s Focus
+                </h2>
               </div>
               <button
                 type="button"
@@ -553,11 +576,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {task.title}
                         </button>
                         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs tabular-nums">
-                          <span className={`inline-flex items-center gap-1 font-medium ${catStyle.text}`}>
+                          <span className={`inline-flex items-center gap-1.5 font-medium ${catStyle.text}`}>
                             <span
-                              className={`inline-flex h-4.5 w-4.5 items-center justify-center rounded border ${catStyle.softBg} ${catStyle.border}`}
+                              className={`inline-flex h-6 w-6 items-center justify-center rounded-lg border ${catStyle.softBg} ${catStyle.border}`}
                             >
-                              <TaskContextIcon task={task} className="h-3 w-3 shrink-0" />
+                              <TaskContextIcon task={task} className="h-3.5 w-3.5 shrink-0" />
                             </span>
                             <span>{task.category}</span>
                           </span>
@@ -598,11 +621,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Upcoming Events & Deadlines (Light Blue Accent) */}
           <section className="overflow-hidden rounded-2xl border border-[#BFDBFE] bg-[#F2F7FF] shadow-2xs">
             <div className="flex items-center justify-between gap-2 border-b border-[#DBEAFE] bg-gradient-to-r from-[#E8F1FF] to-[#EFF6FF] px-4 py-3.5 sm:px-5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-[#2563EB] shadow-2xs">
-                  <Calendar className="h-4 w-4" aria-hidden="true" />
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#2563EB] shadow-2xs border border-[#BFDBFE]">
+                  <Calendar className="h-[18px] w-[18px]" aria-hidden="true" />
                 </span>
-                <h2 className="text-sm font-bold text-[#1E1B2E]">Upcoming &amp; Events</h2>
+                <h2 className="text-sm font-bold text-[#1E1B2E]">📅 Upcoming &amp; Events</h2>
               </div>
               <button
                 type="button"
@@ -691,11 +714,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Interactive Applications Overview (Soft Lavender Accent) */}
           <section className="overflow-hidden rounded-2xl border border-[#D4C8F2] bg-[#F7F4FF] shadow-2xs">
             <div className="flex items-center justify-between gap-2 border-b border-[#E4DCF7] bg-gradient-to-r from-[#EFEAFF] to-[#F5F2FF] px-4 py-3.5 sm:px-5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-[#6D4AFF] shadow-2xs">
-                  <Briefcase className="h-4 w-4" aria-hidden="true" />
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[#6D4AFF] shadow-2xs border border-[#DDD6FE]">
+                  <Briefcase className="h-[18px] w-[18px]" aria-hidden="true" />
                 </span>
-                <h2 className="text-sm font-bold text-[#1E1B2E]">Applications</h2>
+                <h2 className="text-sm font-bold text-[#1E1B2E]">💼 Applications</h2>
               </div>
               <button
                 type="button"
@@ -832,6 +855,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </section>
         </div>
       </div>
+
+      {/* Career Focus, AI Career Insights & External Job Opportunities */}
+      <CareerCenterSection
+        firstName={firstName}
+        careerFocus={careerFocus}
+        customCareerFocus={customCareerFocus}
+        insights={careerInsights}
+        isLoadingInsights={isLoadingCareerInsights}
+        applications={applications}
+        tasks={tasks}
+        onSelectCareerFocus={onSelectCareerFocus}
+        onChangeCustomCareerFocus={onChangeCustomCareerFocus}
+        onRefreshInsights={onRefreshCareerInsights}
+        onQuickAddCareerTask={onQuickAddTask}
+      />
     </div>
   );
 };

@@ -153,21 +153,21 @@ export const MorningBriefingSection: React.FC<MorningBriefingSectionProps> = ({
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3 min-w-0">
             <span
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-2xs ${
                 isEvening
                   ? 'border-[#C4B5FD] bg-gradient-to-br from-[#EDE9FE] to-[#DDD6FE] text-[#5B38EE]'
                   : 'border-[#FED7AA] bg-gradient-to-br from-[#FFF7ED] to-[#FFEDD5] text-[#EA580C]'
               }`}
             >
-              {isEvening ? <Moon className="h-4.5 w-4.5" /> : <Sun className="h-4.5 w-4.5" />}
+              {isEvening ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base font-bold text-[#1E1B2E]">
-                  {isEvening ? 'AI Evening Briefing' : 'AI Morning Briefing'}
+                  {isEvening ? '🌙 AI Evening Briefing' : '☀️ AI Morning Briefing'}
                 </h2>
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-[#5B38EE]">
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Sparkles className="h-4 w-4" />
                   {plan.source === 'gemini'
                     ? isEvening
                       ? 'Gemini Evening Plan'

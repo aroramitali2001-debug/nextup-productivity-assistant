@@ -219,11 +219,16 @@ export const UpcomingView: React.FC<UpcomingViewProps> = ({
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">Calendar</h1>
-          <p className="mt-0.5 text-sm text-[#5B5570]">
-            Upcoming events, deadlines, and chronological workload timeline.
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DDD6FE] bg-white text-[#6D4AFF] shadow-2xs">
+            <Calendar className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-[#1E1B2E]">Calendar</h1>
+            <p className="mt-0.5 text-sm text-[#5B5570]">
+              Upcoming events, deadlines, and chronological workload timeline.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
