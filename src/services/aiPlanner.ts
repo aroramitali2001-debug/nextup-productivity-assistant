@@ -1,5 +1,6 @@
 import {
   AIDailyPlan,
+  BriefingType,
   JobApplication,
   ReplanResult,
   ReplanSuggestion,
@@ -12,10 +13,11 @@ import {
   formatDuration,
   formatFriendlyDate,
   formatFriendlyDateTime,
-  getCurrentTimeHHmm,
+  getBriefingPeriod,
   getDayDifference,
+  getLocalTimeHHmmInTimeZone,
   isTaskOverdue,
-  toLocalDateKey,
+  toDateKeyInTimeZone,
 } from '../utils/dateUtils';
 import { deterministicPrioritiser } from './prioritiser';
 
@@ -35,9 +37,12 @@ export function buildRuleBasedDailyPlan(
   availableHoursToday = 4,
   now: Date = new Date(),
   calendarContext?: PlannerCalendarContext,
-  userName?: string
+  userName?: string,
+  briefingTypeOverride?: BriefingType,
+  timeZone?: string
 ): AIDailyPlan {
-  const todayKey = toLocalDateKey(now);
+  const todayKey = toDateKeyInTimeZone(now, timeZone);
+  const briefingType: BriefingType = briefingTypeOverride ?? getBriefingPeriod(now, timeZone);
   const activeTasks = tasks.filter((t) => !t.completed);
   const activeIds = new Set(activeTasks.map((t) => t.id));
   const ranked = deterministicPrioritiser.rankTopPriorities(tasks, todayKey, activeTasks.length);
@@ -139,20 +144,42 @@ export function buildRuleBasedDailyPlan(
   const followUpsToday = applications.filter(
     (a) => a.followUpDate === todayKey && a.status !== 'Rejected' && a.status !== 'Offer'
   ).length;
+  const followUpsTomorrow = applications.filter(
+    (a) => a.followUpDate === tomorrowKey && a.status !== 'Rejected' && a.status !== 'Offer'
+  ).length;
+  const completedTodayCount = tasks.filter(
+    (t) =>
+      t.completed &&
+      (t.completedAt
+        ? toDateKeyInTimeZone(new Date(t.completedAt), timeZone) === todayKey
+        : t.deadline === todayKey)
+  ).length;
+  const pendingTodayCount = activeTasks.filter(
+    (t) => t.deadline === todayKey || isTaskOverdue(t, now)
+  ).length;
+  const tomorrowTasks = activeTasks
+    .filter((t) => t.deadline === tomorrowKey)
+    .sort((a, b) => compareDeadlineDateTime(a.deadline, a.deadlineTime, b.deadline, b.deadlineTime));
   const leadTaskTitle = topThree[0]
     ? activeTasks.find((t) => t.id === topThree[0].taskId)?.title
     : undefined;
+  const nextDayLeadTitle = tomorrowTasks[0]?.title || leadTaskTitle;
 
   const namePrefix = userName ? `${userName}, ` : '';
   const headlineSummary =
-    activeTasks.length === 0
-      ? `${namePrefix}your task queue is clear — a great window to review applications or plan ahead.`
-      : unrealisticTodayIds.length > 0
-        ? `${namePrefix}your plate is heavier than your ${availableHoursToday}h window${calendarContext?.connected && calendarBusyMins > 0 ? ` (with ${formatDuration(calendarBusyMins)} on Calendar)` : ''}. Protect "${leadTaskTitle || 'your top priority'}" first and consider shifting overflow items.`
-        : `${namePrefix}start with "${leadTaskTitle || 'your top priority'}"${followUpsToday > 0 ? ` and keep time for ${followUpsToday} follow-up${followUpsToday === 1 ? '' : 's'} due today` : ''}${calendarContext?.connected && calendarBusyMins > 0 ? ` around ${formatDuration(calendarBusyMins)} of Calendar events` : ''}. Your workload fits comfortably in your open hours.`;
+    briefingType === 'evening'
+      ? activeTasks.length === 0
+        ? `${namePrefix}you wrapped up ${completedTodayCount} task${completedTodayCount === 1 ? '' : 's'} today and cleared your queue. Rest up — tomorrow is wide open.`
+        : `${namePrefix}you completed ${completedTodayCount} task${completedTodayCount === 1 ? '' : 's'} today${pendingTodayCount > 0 ? ` with ${pendingTodayCount} still open` : ''}. ${tomorrowTasks.length > 0 ? `Tomorrow features "${nextDayLeadTitle}"${followUpsTomorrow > 0 ? ` and ${followUpsTomorrow} follow-up${followUpsTomorrow === 1 ? '' : 's'}` : ''}.` : `Top carried-over priority for tomorrow: "${nextDayLeadTitle || 'review upcoming deadlines'}".`}`
+      : activeTasks.length === 0
+        ? `${namePrefix}your task queue is clear — a great window to review applications or plan ahead.`
+        : unrealisticTodayIds.length > 0
+          ? `${namePrefix}your plate is heavier than your ${availableHoursToday}h window${calendarContext?.connected && calendarBusyMins > 0 ? ` (with ${formatDuration(calendarBusyMins)} on Calendar)` : ''}. Protect "${leadTaskTitle || 'your top priority'}" first and consider shifting overflow items.`
+          : `${namePrefix}start with "${leadTaskTitle || 'your top priority'}"${followUpsToday > 0 ? ` and keep time for ${followUpsToday} follow-up${followUpsToday === 1 ? '' : 's'} due today` : ''}${calendarContext?.connected && calendarBusyMins > 0 ? ` around ${formatDuration(calendarBusyMins)} of Calendar events` : ''}. Your workload fits comfortably in your open hours.`;
 
   return {
     source: 'rule-based',
+    briefingType,
     generatedAt: now.toISOString(),
     headlineSummary,
     topThree,
@@ -171,27 +198,35 @@ export async function generateAIDailyPlan(
   availableHoursToday = 4,
   now: Date = new Date(),
   calendarContext?: PlannerCalendarContext,
-  userName?: string
+  userName?: string,
+  briefingTypeOverride?: BriefingType,
+  timeZone?: string
 ): Promise<AIDailyPlan> {
+  const briefingType: BriefingType = briefingTypeOverride ?? getBriefingPeriod(now, timeZone);
   const fallback = buildRuleBasedDailyPlan(
     tasks,
     applications,
     availableHoursToday,
     now,
     calendarContext,
-    userName
+    userName,
+    briefingType,
+    timeZone
   );
   if (tasks.filter((t) => !t.completed).length === 0) {
     return fallback;
   }
 
+  const todayKey = toDateKeyInTimeZone(now, timeZone);
   try {
     const res = await fetch('/api/ai/daily-plan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        todayKey: toLocalDateKey(now),
-        currentTime: getCurrentTimeHHmm(now),
+        todayKey,
+        tomorrowKey: addDaysToDateKey(todayKey, 1),
+        currentTime: getLocalTimeHHmmInTimeZone(now, timeZone),
+        briefingType,
         availableHoursToday,
         userName: userName || undefined,
         calendarContext,
@@ -207,6 +242,7 @@ export async function generateAIDailyPlan(
     const validIds = normalizeValidTaskIdSet(tasks);
     return {
       source: 'gemini',
+      briefingType,
       generatedAt: now.toISOString(),
       headlineSummary: data.plan.headlineSummary,
       topThree: (data.plan.topThree ?? []).filter((x) => validIds.has(x.taskId)).slice(0, 3),
@@ -235,9 +271,10 @@ export function buildRuleBasedReplan(
   completedTodayCount: number,
   contextNote?: string,
   now: Date = new Date(),
-  userName?: string
+  userName?: string,
+  timeZone?: string
 ): ReplanResult {
-  const todayKey = toLocalDateKey(now);
+  const todayKey = toDateKeyInTimeZone(now, timeZone);
   const tomorrowKey = addDaysToDateKey(todayKey, 1);
   const activeTasks = tasks.filter((t) => !t.completed);
   const ranked = deterministicPrioritiser.rankTopPriorities(tasks, todayKey, activeTasks.length);
@@ -325,7 +362,8 @@ export async function generateReplanMyDay(
   completedTodayCount: number,
   contextNote?: string,
   now: Date = new Date(),
-  userName?: string
+  userName?: string,
+  timeZone?: string
 ): Promise<ReplanResult> {
   const fallback = buildRuleBasedReplan(
     tasks,
@@ -333,7 +371,8 @@ export async function generateReplanMyDay(
     completedTodayCount,
     contextNote,
     now,
-    userName
+    userName,
+    timeZone
   );
 
   const activeTasks = tasks.filter((t) => !t.completed);
@@ -344,8 +383,8 @@ export async function generateReplanMyDay(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        todayKey: toLocalDateKey(now),
-        currentTime: getCurrentTimeHHmm(now),
+        todayKey: toDateKeyInTimeZone(now, timeZone),
+        currentTime: getLocalTimeHHmmInTimeZone(now, timeZone),
         remainingHoursToday,
         completedTodayCount,
         userName: userName || undefined,

@@ -27,7 +27,7 @@ import {
   suggestTasksForStatusChange,
 } from './services/applicationIntelligence';
 import {
-  buildMorningBriefingEmailContent,
+  buildBriefingEmailContent,
   buildTaskReminderEmailContent,
   buildTaskReminderKey,
   computeTaskReminderTriggerDate,
@@ -58,7 +58,8 @@ import { CalendarEventItem, fetchTodayCalendarEvents } from './services/workspac
 import {
   formatDuration,
   formatFriendlyDateTime,
-  getCurrentTimeHHmm,
+  getBriefingPeriod,
+  getLocalTimeHHmmInTimeZone,
   parseDateTimeLocal,
 } from './utils/dateUtils';
 import { extractFirstName, isPlaceholderName, resolveUserFirstName } from './utils/userName';
@@ -66,6 +67,7 @@ import {
   AIDailyPlan,
   ApplicationStatus,
   ApplicationViewFilter,
+  BriefingType,
   JobApplication,
   NavTab,
   ReplanResult,
@@ -112,6 +114,26 @@ export default function App() {
   const [prefsModalOpen, setPrefsModalOpen] = useState(false);
 
   // AI Daily Planner & Replan & Midday Check-in
+  const [autoBriefingPeriod, setAutoBriefingPeriod] = useState<BriefingType>(() =>
+    getBriefingPeriod(new Date(), initialData.profile.timezone)
+  );
+  const [manualBriefingMode, setManualBriefingMode] = useState<BriefingType | null>(null);
+  const briefingMode: BriefingType = manualBriefingMode ?? autoBriefingPeriod;
+
+  useEffect(() => {
+    const syncPeriod = () => {
+      const nextPeriod = getBriefingPeriod(new Date(), profile.timezone);
+      setAutoBriefingPeriod((prev) => {
+        if (prev !== nextPeriod) {
+          setManualBriefingMode(null);
+        }
+        return nextPeriod;
+      });
+    };
+    syncPeriod();
+    const timer = window.setInterval(syncPeriod, 60_000);
+    return () => window.clearInterval(timer);
+  }, [profile.timezone]);
   const [aiPlanOverride, setAiPlanOverride] = useState<AIDailyPlan | null>(null);
   const [dismissedPlanKeys, setDismissedPlanKeys] = useState<Set<string>>(new Set());
   const [isPlanningAI, setIsPlanningAI] = useState(false);
@@ -358,15 +380,18 @@ export default function App() {
 
   const activeDailyPlan = useMemo(() => {
     const base =
-      aiPlanOverride ??
-      buildRuleBasedDailyPlan(
-        tasks,
-        applications,
-        profile.availableHoursToday ?? 4,
-        new Date(),
-        calendarContext,
-        firstName
-      );
+      aiPlanOverride && aiPlanOverride.briefingType === briefingMode
+        ? aiPlanOverride
+        : buildRuleBasedDailyPlan(
+            tasks,
+            applications,
+            profile.availableHoursToday ?? 4,
+            new Date(),
+            calendarContext,
+            firstName,
+            briefingMode,
+            profile.timezone
+          );
 
     return {
       ...base,
@@ -379,9 +404,11 @@ export default function App() {
     };
   }, [
     aiPlanOverride,
+    briefingMode,
     tasks,
     applications,
     profile.availableHoursToday,
+    profile.timezone,
     calendarContext,
     firstName,
     dismissedPlanKeys,
@@ -503,17 +530,28 @@ export default function App() {
       profile.availableHoursToday ?? 4,
       new Date(),
       calendarContext,
-      firstName
+      firstName,
+      briefingMode,
+      profile.timezone
     );
     setAiPlanOverride(plan);
     setIsPlanningAI(false);
+    const label = briefingMode === 'evening' ? 'Evening briefing' : 'Morning briefing';
     setToast({
       message:
         plan.source === 'gemini'
-          ? `AI Daily Planner updated${firstName ? ` for ${firstName}` : ''}`
-          : 'Daily plan updated with local rules',
+          ? `${label} updated${firstName ? ` for ${firstName}` : ''}`
+          : `${label} updated with local rules`,
     });
-  }, [tasks, applications, profile.availableHoursToday, calendarContext, firstName]);
+  }, [
+    tasks,
+    applications,
+    profile.availableHoursToday,
+    profile.timezone,
+    briefingMode,
+    calendarContext,
+    firstName,
+  ]);
 
   const handleApprovePostpone = useCallback(
     (taskId: string, newDeadline: string) => {
@@ -586,12 +624,13 @@ export default function App() {
         completedToday,
         undefined,
         new Date(),
-        firstName
+        firstName,
+        profile.timezone
       );
       setReplanResult(result);
       setIsReplanning(false);
     },
-    [tasks, today, firstName]
+    [tasks, today, firstName, profile.timezone]
   );
 
   const handleOpenReplan = useCallback(() => {
@@ -969,18 +1008,24 @@ export default function App() {
     if (!emailSetupReady || !accessToken || !googleUser?.email) {
       throw new Error('Email reminders setup required.');
     }
-    const { subject, body } = buildMorningBriefingEmailContent(
+    const sendNow = new Date();
+    const { subject, body, briefingType } = buildBriefingEmailContent(
       firstName,
       tasks,
       applications,
       activeDailyPlan,
       profile.availableHoursToday ?? 4,
       calendarBusyMinutes,
-      Boolean(googleUser && accessToken)
+      Boolean(googleUser && accessToken),
+      window.location.origin,
+      sendNow,
+      profile.timezone
     );
     await sendGmailMessage(accessToken, googleUser.email, subject, body);
-    markMorningBriefingSentToday();
-    setToast({ message: `Sent Morning Briefing email to ${googleUser.email}` });
+    markMorningBriefingSentToday(sendNow, profile.timezone);
+    setToast({
+      message: `Sent ${briefingType === 'evening' ? 'Evening' : 'Morning'} Briefing email to ${googleUser.email}`,
+    });
   }, [
     emailSetupReady,
     accessToken,
@@ -990,6 +1035,7 @@ export default function App() {
     applications,
     activeDailyPlan,
     profile.availableHoursToday,
+    profile.timezone,
     calendarBusyMinutes,
   ]);
 
@@ -1001,10 +1047,17 @@ export default function App() {
     const key = buildTaskReminderKey(target);
     setIsSendingManualEmail(true);
     try {
-      const { subject, body } = buildTaskReminderEmailContent(target, firstName);
+      const sendNow = new Date();
+      const { subject, body } = buildTaskReminderEmailContent(
+        target,
+        firstName,
+        window.location.origin,
+        sendNow,
+        profile.timezone
+      );
       await sendGmailMessage(accessToken, googleUser.email, subject, body);
       markReminderKeySent(key);
-      const sentAt = new Date().toISOString();
+      const sentAt = sendNow.toISOString();
       setTasks((prev) =>
         prev.map((t) =>
           t.id === target.id ? { ...t, lastReminderSentKey: key, lastReminderSentAt: sentAt } : t
@@ -1019,7 +1072,7 @@ export default function App() {
     } finally {
       setIsSendingManualEmail(false);
     }
-  }, [pendingManualReminderTask, emailSetupReady, accessToken, googleUser, firstName]);
+  }, [pendingManualReminderTask, emailSetupReady, accessToken, googleUser, firstName, profile.timezone]);
 
   // Duplicate-safe automatic email reminder scheduler (requires explicit opt-in & verified email)
   useEffect(() => {
@@ -1055,10 +1108,17 @@ export default function App() {
 
           sendingReminderKeysRef.current.add(key);
           try {
-            const { subject, body } = buildTaskReminderEmailContent(task, firstName);
+            const sendNow = new Date();
+            const { subject, body } = buildTaskReminderEmailContent(
+              task,
+              firstName,
+              window.location.origin,
+              sendNow,
+              profile.timezone
+            );
             await sendGmailMessage(accessToken, recipientEmail, subject, body);
             markReminderKeySent(key);
-            const sentAt = new Date().toISOString();
+            const sentAt = sendNow.toISOString();
             setTasks((prev) =>
               prev.map((t) =>
                 t.id === task.id
@@ -1075,30 +1135,34 @@ export default function App() {
         }
       }
 
-      // 2. Daily Morning Briefing email (at or after configured morningBriefingTime, max once/day)
+      // 2. Daily briefing email (at or after configured time, evaluated at actual send time, max once/day)
       if (
         profile.morningBriefingEmailEnabled &&
-        !hasSentMorningBriefingToday() &&
+        !hasSentMorningBriefingToday(now, profile.timezone) &&
         !sendingBriefingRef.current
       ) {
-        const currentHHmm = getCurrentTimeHHmm(now);
+        const currentHHmm = getLocalTimeHHmmInTimeZone(now, profile.timezone);
         const targetHHmm = profile.morningBriefingTime || '07:00';
         if (currentHHmm >= targetHHmm) {
           sendingBriefingRef.current = true;
           try {
-            const { subject, body } = buildMorningBriefingEmailContent(
+            const sendNow = new Date();
+            const { subject, body, briefingType } = buildBriefingEmailContent(
               firstName,
               tasks,
               applications,
               activeDailyPlan,
               profile.availableHoursToday ?? 4,
               calendarBusyMinutes,
-              Boolean(googleUser && accessToken)
+              Boolean(googleUser && accessToken),
+              window.location.origin,
+              sendNow,
+              profile.timezone
             );
             await sendGmailMessage(accessToken, recipientEmail, subject, body);
-            markMorningBriefingSentToday();
+            markMorningBriefingSentToday(sendNow, profile.timezone);
             setToast({
-              message: `Sent Morning Briefing email to ${recipientEmail}`,
+              message: `Sent ${briefingType === 'evening' ? 'Evening' : 'Morning'} Briefing email to ${recipientEmail}`,
             });
           } catch {
             sendingBriefingRef.current = false;
@@ -1117,6 +1181,7 @@ export default function App() {
     profile.morningBriefingEmailEnabled,
     profile.morningBriefingTime,
     profile.availableHoursToday,
+    profile.timezone,
     accessToken,
     googleUser,
     tasks,
@@ -1198,6 +1263,8 @@ export default function App() {
             followUpsOverdue={followUpsOverdue}
             workloadMetrics={workloadMetrics}
             aiDailyPlan={activeDailyPlan}
+            briefingMode={briefingMode}
+            onChangeBriefingMode={setManualBriefingMode}
             isPlanningAI={isPlanningAI}
             onToggleTask={handleToggleTask}
             onQuickAddTask={handleQuickAddTask}
@@ -1276,6 +1343,7 @@ export default function App() {
             emailSetupReady={emailSetupReady}
             emailRemindersOptIn={profile.emailRemindersEnabled}
             firstName={firstName}
+            timeZone={profile.timezone}
             onGoogleSignIn={handleGoogleSignIn}
             onGoogleSignOut={handleGoogleSignOut}
             calendarEvents={calendarEvents}

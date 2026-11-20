@@ -25,7 +25,7 @@ export const INTEGRATIONS_CATALOG: IntegrationDefinition[] = [
       'Connection setup coming soon — official Google Calendar OAuth is not enabled in this workspace yet.',
     permissionsSummary: 'Read-only access to calendar events and free/busy availability (no password ever requested).',
     capabilities: [
-      'View classes, meetings, and interviews in your Morning Briefing',
+      'View classes, meetings, and interviews in your Morning or Evening Briefing',
       'Calculate real available hours between scheduled events',
       'Spot conflicts between calendar commitments and task deadlines',
       'Suggest time blocks with your explicit approval',
@@ -70,14 +70,14 @@ export const INTEGRATIONS_CATALOG: IntegrationDefinition[] = [
     name: 'WhatsApp',
     tagline: 'Receive briefings, midday check-ins, and deadline nudges.',
     onboardingDescription:
-      'Receive your morning briefing, midday check-in and important reminders directly on WhatsApp.',
+      'Receive your morning or evening briefing, midday check-in and important reminders directly on WhatsApp.',
     connectButtonLabel: 'Connect WhatsApp',
     availableInEnvironment: false,
     unavailableReason:
       'Connection setup coming soon — an approved WhatsApp Business integration is required before messages can be delivered.',
     permissionsSummary: 'Opt-in notification delivery only via approved WhatsApp Business messaging; no WhatsApp credentials requested.',
     capabilities: [
-      'Send Your Morning Briefing at your chosen briefing time',
+      'Send your Morning or Evening Briefing at your chosen briefing time',
       'Deliver Midday Check-in nudges to rebalance your afternoon',
       'Alert you on urgent deadlines and application follow-ups',
     ],

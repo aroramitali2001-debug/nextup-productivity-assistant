@@ -182,8 +182,11 @@ export interface DeprioritiseSuggestion {
   reason: string;
 }
 
+export type BriefingType = 'morning' | 'evening';
+
 export interface AIDailyPlan {
   source: 'gemini' | 'rule-based';
+  briefingType?: BriefingType;
   generatedAt: string;
   headlineSummary: string;
   topThree: { taskId: string; reason: string }[];

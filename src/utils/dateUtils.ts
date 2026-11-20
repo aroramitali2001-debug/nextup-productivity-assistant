@@ -7,6 +7,25 @@ export function toLocalDateKey(date: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+export function toDateKeyInTimeZone(date: Date = new Date(), timeZone?: string): string {
+  if (timeZone) {
+    try {
+      const formatted = new Intl.DateTimeFormat('en-CA', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone,
+      }).format(date);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(formatted)) {
+        return formatted;
+      }
+    } catch {
+      // Fallback to local runtime timezone
+    }
+  }
+  return toLocalDateKey(date);
+}
+
 export function getCurrentTimeHHmm(date: Date = new Date()): string {
   const hours = String(date.getHours()).padStart(2, '0');
   const mins = String(date.getMinutes()).padStart(2, '0');
@@ -113,12 +132,21 @@ export function formatFriendlyDateTime(
   return `${dateLabel}, ${formatTime12h(timeStr)}`;
 }
 
-export function formatHeaderDate(date: Date = new Date()): string {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
+export function formatHeaderDate(date: Date = new Date(), timeZone?: string): string {
+  try {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      ...(timeZone ? { timeZone } : {}),
+    });
+  } catch {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
 }
 
 export function formatDuration(minutes: number): string {
@@ -134,10 +162,78 @@ export function formatHoursDecimal(hours: number): string {
   return `${rounded}h`;
 }
 
+export function getLocalHourInTimeZone(
+  date: Date = new Date(),
+  timeZone?: string
+): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      hour12: false,
+      ...(timeZone ? { timeZone } : {}),
+    }).formatToParts(date);
+    const hourPart = parts.find((p) => p.type === 'hour')?.value;
+    if (hourPart !== undefined) {
+      const parsed = Number(hourPart);
+      if (!Number.isNaN(parsed)) return parsed % 24;
+    }
+  } catch {
+    // Fallback to runtime local timezone if provided timezone string is invalid
+  }
+  return date.getHours();
+}
+
+export function getLocalTimeHHmmInTimeZone(
+  date: Date = new Date(),
+  timeZone?: string
+): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      ...(timeZone ? { timeZone } : {}),
+    }).formatToParts(date);
+    const hh = parts.find((p) => p.type === 'hour')?.value;
+    const mm = parts.find((p) => p.type === 'minute')?.value;
+    if (hh !== undefined && mm !== undefined) {
+      return `${String(Number(hh) % 24).padStart(2, '0')}:${mm}`;
+    }
+  } catch {
+    // Fallback to runtime local timezone
+  }
+  return getCurrentTimeHHmm(date);
+}
+
 export function getGreetingForHour(hour: number = new Date().getHours()): string {
   if (hour < 12) return 'Good morning';
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
+}
+
+export function getGreetingForDate(
+  date: Date = new Date(),
+  timeZone?: string
+): string {
+  return getGreetingForHour(getLocalHourInTimeZone(date, timeZone));
+}
+
+export function formatPersonalizedGreeting(
+  firstName?: string,
+  date: Date = new Date(),
+  timeZone?: string
+): string {
+  const greeting = getGreetingForDate(date, timeZone);
+  const cleanName = firstName?.trim();
+  return cleanName ? `${greeting}, ${cleanName}!` : `${greeting}!`;
+}
+
+export function getBriefingPeriod(
+  date: Date = new Date(),
+  timeZone?: string
+): 'morning' | 'evening' {
+  const hour = getLocalHourInTimeZone(date, timeZone);
+  return hour >= 17 ? 'evening' : 'morning';
 }
 
 export function getDayDifference(fromKey: string, toKey: string): number {

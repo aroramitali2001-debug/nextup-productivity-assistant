@@ -28,7 +28,13 @@ import {
   syncApplicationsToSheet,
 } from '../services/workspaceApis';
 import { JobApplication, Task } from '../types/nextup';
-import { formatDuration, formatFriendlyDateTime, toLocalDateKey } from '../utils/dateUtils';
+import {
+  formatDuration,
+  formatFriendlyDateTime,
+  formatPersonalizedGreeting,
+  getBriefingPeriod,
+  toLocalDateKey,
+} from '../utils/dateUtils';
 
 interface IntegrationsViewProps {
   googleUser: User | null;
@@ -42,6 +48,7 @@ interface IntegrationsViewProps {
   emailSetupReady: boolean;
   emailRemindersOptIn: boolean;
   firstName: string;
+  timeZone?: string;
   onGoogleSignIn: (mode?: GoogleSignInMode) => Promise<void>;
   onGoogleSignOut: () => Promise<void>;
   calendarEvents: CalendarEventItem[];
@@ -76,6 +83,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
   emailSetupReady,
   emailRemindersOptIn,
   firstName,
+  timeZone,
   onGoogleSignIn,
   onGoogleSignOut,
   calendarEvents,
@@ -276,15 +284,21 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
 
   const handleRequestSendBriefingEmail = () => {
     if (!emailSetupReady || !googleUser?.email) return;
+    const now = new Date();
+    const period = getBriefingPeriod(now, timeZone);
+    const liveGreeting = formatPersonalizedGreeting(firstName, now, timeZone);
+    const isEvening = period === 'evening';
     setConfirmState({
       isOpen: true,
-      title: 'Send Morning Briefing email now?',
-      description: `NextUp will send today's personalised briefing${firstName ? ` for ${firstName}` : ''} to your verified email address.`,
+      title: `Send ${isEvening ? 'Evening' : 'Morning'} Briefing email now?`,
+      description: `NextUp will generate an ${period} briefing starting with "${liveGreeting}" based on your current local time and send it via Gmail.`,
       details: [
         `Recipient: ${googleUser.email}`,
-        'Includes tasks due today, overdue items, follow-ups, and top 3 priorities',
+        isEvening
+          ? 'Includes today’s completed tasks, pending items, upcoming deadlines, follow-ups, and tomorrow’s top priorities'
+          : 'Includes tasks due today, overdue items, upcoming deadlines, follow-ups, and top 3 priorities',
       ],
-      confirmLabel: 'Send briefing email',
+      confirmLabel: `Send ${period} briefing`,
       action: async () => {
         try {
           await onSendMorningBriefingEmailNow();
@@ -840,7 +854,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({
             <ul className="mt-3 space-y-1.5 border-t border-[#F1ECFA] pt-3 text-xs text-[#5B5570]">
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A78BFA]" />
-                <span>Deliver Your Morning Briefing around 7:00 AM</span>
+                <span>Deliver your Morning or Evening Briefing at your chosen time</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A78BFA]" />

@@ -105,7 +105,9 @@ Rules:
 
     const {
       todayKey,
+      tomorrowKey,
       currentTime,
+      briefingType,
       availableHoursToday,
       userName,
       calendarContext,
@@ -113,7 +115,9 @@ Rules:
       applications,
     } = req.body as {
       todayKey?: string;
+      tomorrowKey?: string;
       currentTime?: string;
+      briefingType?: 'morning' | 'evening';
       availableHoursToday?: number;
       userName?: string;
       calendarContext?: {
@@ -125,10 +129,13 @@ Rules:
       applications?: unknown[];
     };
 
+    const effectiveBriefingType = briefingType === 'evening' ? 'evening' : 'morning';
+
     try {
       const response = await ai.models.generateContent({
         model: MODEL_NAME,
-        contents: `Today is ${todayKey}, current local time is ${currentTime}.
+        contents: `Today is ${todayKey}${tomorrowKey ? `, tomorrow is ${tomorrowKey}` : ''}, current local time is ${currentTime}.
+Briefing mode: ${effectiveBriefingType}.
 User first name: ${userName || 'not provided'}.
 Student's available focus hours today: ${availableHoursToday ?? 'not specified'}.
 Google Calendar connected: ${calendarContext?.connected ? 'yes' : 'no'}.
@@ -136,8 +143,12 @@ Calendar commitments today: ${calendarContext?.connected ? `${calendarContext.bu
 Tasks JSON: ${JSON.stringify(tasks ?? [])}
 Job/Internship Applications JSON: ${JSON.stringify(applications ?? [])}
 
-Analyse all incomplete tasks (considering deadline urgency, exact deadlineTime, priority, estimatedMinutes, overdue status, dependencies, calendar availability, and whether each task relates to an interview, assessment, application, assignment, or personal commitment) plus active application follow-ups.
-Write a calm, realistic, actionable plan. Address the user naturally by their first name ONLY if provided (never invent a name). For every topThree and recommendedOrder entry, write a clear, human explanation of WHY it is prioritised and which tasks can realistically be moved if workload exceeds available time. Reference real task IDs from Tasks JSON.`,
+${
+  effectiveBriefingType === 'evening'
+    ? 'Write a calm, reflective EVENING BRIEFING headlineSummary: acknowledge tasks completed today, highlight any remaining pending/overdue items, preview upcoming deadlines and follow-ups, and frame topThree as the highest-impact priorities for tomorrow. Address the user by first name ONLY if provided.'
+    : 'Write a calm, realistic, actionable MORNING BRIEFING headlineSummary and plan for today: highlight today\'s priorities, upcoming deadlines, important tasks, calendar events, and active application follow-ups. Address the user by first name ONLY if provided.'
+}
+For every topThree and recommendedOrder entry, write a clear, human explanation of WHY it is prioritised and which tasks can realistically be moved if workload exceeds available time. Reference real task IDs from Tasks JSON.`,
         config: {
           systemInstruction:
             'You are NextUp, a calm, practical student productivity assistant. Be concise, supportive, realistic about time constraints, and never invent task IDs or placeholder names.',

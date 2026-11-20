@@ -1,11 +1,17 @@
-import { AIDailyPlan, JobApplication, Task, TaskReminderTiming } from '../types/nextup';
+import { AIDailyPlan, BriefingType, JobApplication, Task, TaskReminderTiming } from '../types/nextup';
 import {
+  addDaysToDateKey,
+  compareDeadlineDateTime,
   formatDuration,
   formatFriendlyDate,
   formatFriendlyDateTime,
+  formatPersonalizedGreeting,
+  getBriefingPeriod,
+  isTaskOverdue,
   parseDateKey,
-  toLocalDateKey,
+  toDateKeyInTimeZone,
 } from '../utils/dateUtils';
+import { deterministicPrioritiser } from './prioritiser';
 
 const SENT_REMINDERS_KEY = 'nextup_v1_sent_reminders';
 const BRIEFING_SENT_KEY = 'nextup_v1_briefing_email_date';
@@ -108,9 +114,11 @@ export function getTaskReminderTimingLabel(task: Task): string {
 export function buildTaskReminderEmailContent(
   task: Task,
   firstName: string,
-  appOrigin: string = typeof window !== 'undefined' ? window.location.origin : ''
+  appOrigin: string = typeof window !== 'undefined' ? window.location.origin : '',
+  sendTime: Date = new Date(),
+  timeZone?: string
 ): { subject: string; body: string } {
-  const todayKey = toLocalDateKey();
+  const todayKey = toDateKeyInTimeZone(sendTime, timeZone);
   const friendlyDate = formatFriendlyDate(task.deadline, todayKey);
   const friendlyDateTime = formatFriendlyDateTime(task.deadline, task.deadlineTime, todayKey);
   const taskUrl = appOrigin ? `${appOrigin}/?task=${encodeURIComponent(task.id)}` : '';
@@ -123,7 +131,7 @@ export function buildTaskReminderEmailContent(
         : `due ${friendlyDate}`;
 
   const subject = `Reminder: ${task.title} is ${subjectDatePhrase}`;
-  const greeting = firstName ? `Hi ${firstName},` : 'Hi there,';
+  const greeting = formatPersonalizedGreeting(firstName, sendTime, timeZone);
   const dueSentence = task.deadlineTime
     ? `Your task "${task.title}" is due ${friendlyDateTime}.`
     : `Your task "${task.title}" is due ${friendlyDate}.`;
@@ -151,7 +159,7 @@ export function buildTaskReminderEmailContent(
   return { subject, body: lines.join('\n') };
 }
 
-export function buildMorningBriefingEmailContent(
+export function buildBriefingEmailContent(
   firstName: string,
   tasks: Task[],
   applications: JobApplication[],
@@ -159,12 +167,30 @@ export function buildMorningBriefingEmailContent(
   availableHoursToday: number,
   calendarBusyMinutes: number,
   calendarConnected: boolean,
-  appOrigin: string = typeof window !== 'undefined' ? window.location.origin : ''
-): { subject: string; body: string } {
-  const todayKey = toLocalDateKey();
+  appOrigin: string = typeof window !== 'undefined' ? window.location.origin : '',
+  sendTime: Date = new Date(),
+  timeZone?: string
+): { subject: string; body: string; briefingType: BriefingType } {
+  const todayKey = toDateKeyInTimeZone(sendTime, timeZone);
+  const tomorrowKey = addDaysToDateKey(todayKey, 1);
+  const briefingType = getBriefingPeriod(sendTime, timeZone);
+  const greeting = formatPersonalizedGreeting(firstName, sendTime, timeZone);
   const taskMap = new Map(tasks.map((t) => [t.id, t]));
-  const dueToday = tasks.filter((t) => !t.completed && t.deadline === todayKey);
-  const overdue = tasks.filter((t) => !t.completed && t.deadline < todayKey);
+
+  const dueToday = tasks.filter(
+    (t) => !t.completed && t.deadline === todayKey && !isTaskOverdue(t, sendTime)
+  );
+  const overdue = tasks.filter((t) => isTaskOverdue(t, sendTime));
+  const upcoming = tasks
+    .filter((t) => !t.completed && t.deadline > todayKey)
+    .sort((a, b) => compareDeadlineDateTime(a.deadline, a.deadlineTime, b.deadline, b.deadlineTime));
+  const completedToday = tasks.filter(
+    (t) =>
+      t.completed &&
+      (t.completedAt
+        ? toDateKeyInTimeZone(new Date(t.completedAt), timeZone) === todayKey
+        : t.deadline === todayKey)
+  );
   const followUpsDue = applications.filter(
     (a) =>
       a.followUpDate &&
@@ -172,18 +198,83 @@ export function buildMorningBriefingEmailContent(
       a.status !== 'Rejected' &&
       a.status !== 'Offer'
   );
+  const followUpsTomorrow = applications.filter(
+    (a) =>
+      a.followUpDate === tomorrowKey &&
+      a.status !== 'Rejected' &&
+      a.status !== 'Offer'
+  );
 
-  const subject = firstName
-    ? `Good morning, ${firstName} — Your NextUp plan for today`
-    : 'Good morning — Your NextUp plan for today';
+  if (briefingType === 'evening') {
+    const tomorrowRanked = deterministicPrioritiser.rankTopPriorities(tasks, tomorrowKey, 3);
+    const subject = `${greeting} — Your NextUp evening summary & tomorrow's plan`;
 
+    const lines: string[] = [
+      greeting,
+      '',
+      firstName
+        ? `Here's your evening summary and priorities for tomorrow, ${firstName}.`
+        : "Here's your evening summary and priorities for tomorrow.",
+      '',
+      `• Completed today: ${completedToday.length}`,
+      `• Still pending for today: ${dueToday.length}${overdue.length > 0 ? ` (${overdue.length} overdue)` : ''}`,
+      `• Upcoming deadlines: ${upcoming.length}`,
+      `• Follow-ups due or coming tomorrow: ${followUpsDue.length + followUpsTomorrow.length}`,
+    ];
+
+    if (completedToday.length > 0) {
+      lines.push('', 'Completed today:');
+      completedToday.slice(0, 5).forEach((t) => {
+        lines.push(`✓ ${t.title}`);
+      });
+    }
+
+    const pendingNow = [...overdue, ...dueToday];
+    if (pendingNow.length > 0) {
+      lines.push('', 'Pending tasks to wrap up or carry forward:');
+      pendingNow.slice(0, 5).forEach((t) => {
+        lines.push(
+          `• ${t.title} (${t.priority} · ${formatFriendlyDateTime(t.deadline, t.deadlineTime, todayKey)})`
+        );
+      });
+    }
+
+    if (followUpsDue.length > 0 || followUpsTomorrow.length > 0) {
+      lines.push('', 'Application follow-ups:');
+      [...followUpsDue, ...followUpsTomorrow].slice(0, 4).forEach((app) => {
+        lines.push(
+          `• ${app.company} (${app.role}) — ${formatFriendlyDateTime(app.followUpDate!, app.followUpTime, todayKey)}`
+        );
+      });
+    }
+
+    lines.push('', 'Top priorities for tomorrow:');
+    if (tomorrowRanked.length === 0) {
+      lines.push('No pending deadlines lined up for tomorrow.');
+    } else {
+      tomorrowRanked.forEach((item, idx) => {
+        const t = item.task;
+        lines.push(
+          `${idx + 1}. ${t.title} (${t.priority} · ${formatDuration(t.estimatedMinutes)} · ${formatFriendlyDateTime(t.deadline, t.deadlineTime, todayKey)})`,
+          `   Why: ${item.reason}`
+        );
+      });
+    }
+
+    lines.push('', 'Open NextUp to review or adjust tomorrow:', appOrigin || 'Open NextUp');
+    return { subject, body: lines.join('\n'), briefingType };
+  }
+
+  // Morning / daytime planning briefing
+  const subject = `${greeting} — Your NextUp plan for today`;
   const lines: string[] = [
-    firstName ? `Good morning, ${firstName},` : 'Good morning,',
+    greeting,
     '',
     firstName ? `Here's your plan for today, ${firstName}.` : "Here's your plan for today.",
     '',
     `• Tasks due today: ${dueToday.length}`,
     `• Overdue tasks: ${overdue.length}`,
+    `• Upcoming deadlines: ${upcoming.length}`,
     `• Application follow-ups due: ${followUpsDue.length}`,
     calendarConnected
       ? `• Calendar commitments: ${formatDuration(calendarBusyMinutes)} booked (${availableHoursToday}h study capacity)`
@@ -205,10 +296,21 @@ export function buildMorningBriefingEmailContent(
     });
   }
 
+  if (followUpsDue.length > 0) {
+    lines.push('', 'Applications requiring attention:');
+    followUpsDue.slice(0, 4).forEach((app) => {
+      lines.push(
+        `• Follow up with ${app.company} (${app.role}) — ${formatFriendlyDateTime(app.followUpDate!, app.followUpTime, todayKey)}`
+      );
+    });
+  }
+
   lines.push('', 'Open NextUp to review or replan your day:', appOrigin || 'Open NextUp');
 
-  return { subject, body: lines.join('\n') };
+  return { subject, body: lines.join('\n'), briefingType };
 }
+
+export const buildMorningBriefingEmailContent = buildBriefingEmailContent;
 
 export async function sendGmailMessage(
   accessToken: string,
@@ -245,11 +347,17 @@ export async function sendGmailMessage(
   return (await res.json()) as { id: string };
 }
 
-export function hasSentMorningBriefingToday(): boolean {
-  const todayKey = toLocalDateKey();
+export function hasSentMorningBriefingToday(
+  now: Date = new Date(),
+  timeZone?: string
+): boolean {
+  const todayKey = toDateKeyInTimeZone(now, timeZone);
   return localStorage.getItem(BRIEFING_SENT_KEY) === todayKey;
 }
 
-export function markMorningBriefingSentToday(): void {
-  localStorage.setItem(BRIEFING_SENT_KEY, toLocalDateKey());
+export function markMorningBriefingSentToday(
+  now: Date = new Date(),
+  timeZone?: string
+): void {
+  localStorage.setItem(BRIEFING_SENT_KEY, toDateKeyInTimeZone(now, timeZone));
 }

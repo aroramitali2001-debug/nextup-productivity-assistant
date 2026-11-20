@@ -29,6 +29,7 @@ import { CalendarEventItem } from '../services/workspaceApis';
 import {
   AIDailyPlan,
   ApplicationViewFilter,
+  BriefingType,
   JobApplication,
   NavTab,
   OverloadedDayWarning,
@@ -45,6 +46,7 @@ import {
   formatFriendlyDateTime,
   formatHeaderDate,
   getGreetingForHour,
+  getLocalHourInTimeZone,
   isTaskOverdue,
   toLocalDateKey,
 } from '../utils/dateUtils';
@@ -61,6 +63,8 @@ interface DashboardViewProps {
   followUpsOverdue: JobApplication[];
   workloadMetrics: WorkloadMetrics;
   aiDailyPlan: AIDailyPlan;
+  briefingMode: BriefingType;
+  onChangeBriefingMode: (mode: BriefingType) => void;
   isPlanningAI: boolean;
   calendarConnected: boolean;
   calendarEvents: CalendarEventItem[];
@@ -102,6 +106,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   followUpsOverdue,
   workloadMetrics,
   aiDailyPlan,
+  briefingMode,
+  onChangeBriefingMode,
   isPlanningAI,
   calendarConnected,
   calendarEvents,
@@ -122,16 +128,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onDismissPlanSuggestion,
   onNavigateTab,
 }) => {
-  const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
+  const [currentHour, setCurrentHour] = useState(() =>
+    getLocalHourInTimeZone(new Date(), profile.timezone)
+  );
   const [quickTaskText, setQuickTaskText] = useState('');
 
   useEffect(() => {
+    setCurrentHour(getLocalHourInTimeZone(new Date(), profile.timezone));
     const timer = window.setInterval(() => {
-      const nextHour = new Date().getHours();
+      const nextHour = getLocalHourInTimeZone(new Date(), profile.timezone);
       setCurrentHour((prev) => (prev === nextHour ? prev : nextHour));
     }, 60_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [profile.timezone]);
 
   const today = toLocalDateKey();
   const taskMap = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
@@ -206,7 +215,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div>
           <p className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide text-[#6D4AFF]">
             <TimeIcon className={`h-3.5 w-3.5 ${timeIconColor}`} aria-hidden="true" />
-            <span>{formatHeaderDate()}</span>
+            <span>{formatHeaderDate(new Date(), profile.timezone)}</span>
           </p>
           <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-[#1E1B2E] sm:text-3xl text-balance">
             {firstName ? (
@@ -385,7 +394,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="space-y-4 lg:col-span-7">
           <MorningBriefingSection
             firstName={firstName}
+            timeZone={profile.timezone}
+            briefingMode={briefingMode}
+            onChangeBriefingMode={onChangeBriefingMode}
             tasks={tasks}
+            applications={applications}
             plan={aiDailyPlan}
             workload={workloadMetrics}
             isPlanningAI={isPlanningAI}

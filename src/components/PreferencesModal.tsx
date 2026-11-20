@@ -248,15 +248,15 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
 
               <div className="border-t border-[#EDE9F6] pt-2.5 flex items-center justify-between gap-3">
                 <label htmlFor="pref-morning-email" className="flex-1 cursor-pointer">
-                  <span className="font-medium text-[#1E1B2E]">Morning briefing email</span>
+                  <span className="font-medium text-[#1E1B2E]">Daily briefing email</span>
                   <span className="block text-[11px] text-[#5B5570]">
-                    Daily summary of priorities & schedule
+                    Sends a Morning plan before 5 PM or an Evening wrap-up from 5 PM onward while NextUp is open
                   </span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="time"
-                    aria-label="Morning briefing time"
+                    aria-label="Daily briefing time"
                     value={morningBriefingTime}
                     onChange={(e) => setMorningBriefingTime(e.target.value)}
                     className="rounded-lg border border-[#E5DFF2] bg-white px-2 py-1 text-xs text-[#1E1B2E] tabular-nums"
